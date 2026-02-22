@@ -30,7 +30,8 @@ type Engine struct {
 	browser     playwright.Browser
 	context     playwright.BrowserContext
 	Stealth     *stealth.StealthConfig
-	initOnce    sync.Once
+	initMu      sync.Mutex
+	initialized bool
 	initErr     error
 	CDPEndpoint string
 
@@ -120,98 +121,161 @@ func (e *Engine) setupPageListeners(page playwright.Page) {
 }
 
 func (e *Engine) EnsureInitialized() error {
-	e.initOnce.Do(func() {
-		log.Println("[BROWSER] Initializing Playwright...")
+	e.initMu.Lock()
+	defer e.initMu.Unlock()
 
-		pw, err := playwright.Run()
-		if err != nil {
-			e.initErr = fmt.Errorf("could not start playwright: %v", err)
-			return
+	if e.initialized {
+		alive := false
+		e.pagesMu.Lock()
+		if len(e.pages) > 0 && !e.pages[0].IsClosed() {
+			alive = true
 		}
-		e.pw = pw
+		e.pagesMu.Unlock()
 
-		var browser playwright.Browser
-		if e.CDPEndpoint != "" {
-			log.Printf("[BROWSER] Connecting to existing browser at %s...", e.CDPEndpoint)
-			browser, err = pw.Chromium.ConnectOverCDP(e.CDPEndpoint)
+		if alive {
+			return e.initErr
+		}
+
+		log.Println("[BROWSER] Connection lost or page closed. Initiating auto-recovery...")
+		e.Close()
+		e.initialized = false
+		e.pw = nil
+		e.browser = nil
+		e.context = nil
+		e.pagesMu.Lock()
+		e.pages = make([]playwright.Page, 0)
+		e.activeTab = 0
+		e.pagesMu.Unlock()
+	}
+
+	e.initialized = true
+	log.Println("[BROWSER] Initializing Playwright...")
+
+	pw, err := playwright.Run()
+	if err != nil {
+		e.initErr = fmt.Errorf("could not start playwright: %v", err)
+		return e.initErr
+	}
+	e.pw = pw
+
+	var browser playwright.Browser
+	var context playwright.BrowserContext
+
+	if e.CDPEndpoint != "" {
+		log.Printf("[BROWSER] Connecting to existing browser at %s...", e.CDPEndpoint)
+		browser, err = pw.Chromium.ConnectOverCDP(e.CDPEndpoint)
+		if err != nil {
+			e.initErr = fmt.Errorf("could not connect over CDP: %v", err)
+			return e.initErr
+		}
+		log.Println("[BROWSER] Connected to existing browser session.")
+		e.browser = browser
+
+		contexts := browser.Contexts()
+		if len(contexts) > 0 {
+			context = contexts[0]
+		} else {
+			context, err = browser.NewContext()
 			if err != nil {
-				e.initErr = fmt.Errorf("could not connect over CDP: %v", err)
-				return
+				e.initErr = fmt.Errorf("could not create context: %v", err)
+				return e.initErr
 			}
-			log.Println("[BROWSER] Connected to existing browser session.")
-			e.browser = browser
+		}
+		e.context = context
 
-			contexts := browser.Contexts()
-			if len(contexts) > 0 {
-				e.context = contexts[0]
-			} else {
-				context, err := browser.NewContext()
-				if err != nil {
-					e.initErr = fmt.Errorf("could not create context: %v", err)
-					return
-				}
-				e.context = context
+	} else {
+		headless := false
+		if os.Getenv("BROWSER_HEADLESS") == "true" {
+			headless = true
+		}
+
+		proxyServer := os.Getenv("HTTP_PROXY")
+		var proxy *playwright.Proxy
+		if proxyServer != "" {
+			proxy = &playwright.Proxy{Server: proxyServer}
+			proxyUser := os.Getenv("PROXY_USERNAME")
+			proxyPass := os.Getenv("PROXY_PASSWORD")
+			if proxyUser != "" && proxyPass != "" {
+				proxy.Username = playwright.String(proxyUser)
+				proxy.Password = playwright.String(proxyPass)
+			}
+			log.Printf("[BROWSER] Using proxy server: %s", proxyServer)
+		}
+
+		userDataDir := os.Getenv("BROWSER_USER_DATA_DIR")
+		if userDataDir != "" {
+			log.Printf("[BROWSER] Using persistent user data dir: %s", userDataDir)
+			launchOpts := playwright.BrowserTypeLaunchPersistentContextOptions{
+				Headless: playwright.Bool(headless),
+				Args: []string{
+					"--disable-blink-features=AutomationControlled",
+				},
+				UserAgent: playwright.String("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"),
+			}
+			if proxy != nil {
+				launchOpts.Proxy = proxy
 			}
 
+			context, err = pw.Chromium.LaunchPersistentContext(userDataDir, launchOpts)
+			if err != nil {
+				e.initErr = fmt.Errorf("could not launch persistent context: %v", err)
+				return e.initErr
+			}
+			e.context = context
 		} else {
 			launchOptions := playwright.BrowserTypeLaunchOptions{
-				Headless: playwright.Bool(false),
+				Headless: playwright.Bool(headless),
 				Args: []string{
 					"--disable-blink-features=AutomationControlled",
 				},
 			}
-
-			proxyServer := os.Getenv("HTTP_PROXY")
-			if proxyServer != "" {
-				proxy := playwright.Proxy{
-					Server: proxyServer,
-				}
-				proxyUser := os.Getenv("PROXY_USERNAME")
-				proxyPass := os.Getenv("PROXY_PASSWORD")
-				if proxyUser != "" && proxyPass != "" {
-					proxy.Username = playwright.String(proxyUser)
-					proxy.Password = playwright.String(proxyPass)
-				}
-				launchOptions.Proxy = &proxy
-				log.Printf("[BROWSER] Using proxy server: %s", proxyServer)
+			if proxy != nil {
+				launchOptions.Proxy = proxy
 			}
 
 			browser, err = pw.Chromium.Launch(launchOptions)
 			if err != nil {
 				e.initErr = fmt.Errorf("could not launch browser: %v", err)
-				return
+				return e.initErr
 			}
 			e.browser = browser
 
-			context, err := browser.NewContext(playwright.BrowserNewContextOptions{
+			context, err = browser.NewContext(playwright.BrowserNewContextOptions{
 				UserAgent: playwright.String("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"),
 			})
 			if err != nil {
 				e.initErr = fmt.Errorf("could not create context: %v", err)
-				return
+				return e.initErr
 			}
 			e.context = context
 		}
+	}
 
-		page, err := e.context.NewPage()
+	// Try to get an existing page or create a new one
+	pages := e.context.Pages()
+	var page playwright.Page
+	if len(pages) > 0 {
+		page = pages[0]
+	} else {
+		page, err = e.context.NewPage()
 		if err != nil {
 			e.initErr = fmt.Errorf("could not create page: %v", err)
-			return
+			return e.initErr
 		}
+	}
 
-		// Setup listeners and stealth for the first tab
-		e.setupPageListeners(page)
-		if err := e.Stealth.Apply(page); err != nil {
-			log.Printf("Warning: Failed to apply stealth: %v", err)
-		}
+	// Setup listeners and stealth for the first tab
+	e.setupPageListeners(page)
+	if err := e.Stealth.Apply(page); err != nil {
+		log.Printf("Warning: Failed to apply stealth: %v", err)
+	}
 
-		e.pagesMu.Lock()
-		e.pages = append(e.pages, page)
-		e.activeTab = 0
-		e.pagesMu.Unlock()
+	e.pagesMu.Lock()
+	e.pages = append(e.pages, page)
+	e.activeTab = 0
+	e.pagesMu.Unlock()
 
-		log.Println("[BROWSER] Ready.")
-	})
+	log.Println("[BROWSER] Ready.")
 	return e.initErr
 }
 
@@ -226,6 +290,9 @@ func (e *Engine) activePage() playwright.Page {
 }
 
 func (e *Engine) Close() {
+	if e.context != nil {
+		e.context.Close()
+	}
 	if e.browser != nil {
 		e.browser.Close()
 	}

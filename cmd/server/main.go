@@ -72,6 +72,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "  HTTP_PROXY      Proxy server (e.g., http://proxy.example.com:8080)")
 		fmt.Fprintln(os.Stderr, "  PROXY_USERNAME  Username for proxy authentication")
 		fmt.Fprintln(os.Stderr, "  PROXY_PASSWORD  Password for proxy authentication")
+		fmt.Fprintln(os.Stderr, "  BROWSER_HEADLESS       Set to 'true' to hide browser window (background mode)")
+		fmt.Fprintln(os.Stderr, "  BROWSER_USER_DATA_DIR  Path to save browser sessions/cookies across restarts")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Flags:")
 		flag.PrintDefaults()
