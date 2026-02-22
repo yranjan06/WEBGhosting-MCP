@@ -52,14 +52,16 @@ Add the following to your MCP configuration (`mcp_config.json`, `settings.json`,
         "AI_MODEL": "gpt-4o",
         "HTTP_PROXY": "http://your-residential-proxy.zone:1234",
         "PROXY_USERNAME": "user",
-        "PROXY_PASSWORD": "password"
+        "PROXY_PASSWORD": "password",
+        "BROWSER_HEADLESS": "true",
+        "BROWSER_USER_DATA_DIR": "/absolute/path/to/save/cookies"
       }
     }
   }
 }
 ```
 
-*Note: All environment variables are optional. `AI_API_KEY` is only needed if you use AI-driven tools like `click` and `type`.*
+*Note: All environment variables are optional. `AI_API_KEY` is only needed if you use AI-driven tools like `click` and `type`. `BROWSER_HEADLESS` runs the browser invisibly. `BROWSER_USER_DATA_DIR` keeps you logged into websites across server restarts.*
 
 ## Tools Available (16 Total)
 
