@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  webmcp:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    # Persistence for browser cache can be added here if needed
+    # volumes:
+    #   - ./browser-cache:/root/.cache/ms-playwright
+    restart: unless-stopped
