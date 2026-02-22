@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/playwright-community/playwright-go"
@@ -312,6 +313,26 @@ func (e *Engine) Navigate(url string) error {
 	_, err := page.Goto(url, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateDomcontentloaded,
 	})
+
+	// Auto-recovery check on navigation failure
+	if err != nil && (strings.Contains(err.Error(), "target closed") || strings.Contains(err.Error(), "Target page, context or browser has been closed")) {
+		log.Println("[BROWSER] Target closed during navigation. Forcing re-initialization...")
+		e.initMu.Lock()
+		e.initialized = false
+		e.initMu.Unlock()
+
+		if retryErr := e.EnsureInitialized(); retryErr != nil {
+			return fmt.Errorf("auto-recovery failed: %v", retryErr)
+		}
+
+		page = e.activePage()
+		if page != nil {
+			_, err = page.Goto(url, playwright.PageGotoOptions{
+				WaitUntil: playwright.WaitUntilStateDomcontentloaded,
+			})
+		}
+	}
+
 	return err
 }
 
