@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebMCP Demo</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        .box { border: 1px solid #333; padding: 20px; margin-bottom: 20px; background: #222; }
+        button { padding: 10px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; }
+        button:hover { background: #444; }
+        input { padding: 10px; background: #000; color: #fff; border: 1px solid #555; }
+        h2 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        #log-area { height: 100px; overflow-y: scroll; border: 1px dashed #555; padding: 10px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <h1>WebMCP Feature Verification</h1>
+    
+    <div class="box" id="stealth-box">
+        <h2>1. Stealth Check</h2>
+        <div id="stealth-result">Checking...</div>
+        <script>
+            // Simple check for navigator.webdriver
+            const isBot = navigator.webdriver;
+            const resultDiv = document.getElementById('stealth-result');
+            if (isBot) {
+                resultDiv.innerText = "FAIL: Bot Detected (navigator.webdriver=true)";
+                resultDiv.style.color = "red";
+            } else {
+                resultDiv.innerText = "PASS: Stealth Active (navigator.webdriver=false)";
+                resultDiv.style.color = "lime";
+            }
+        </script>
+    </div>
+
+    <div class="box">
+        <h2>2. Interaction (Type & Click)</h2>
+        <input type="text" id="test-input" placeholder="Type here...">
+        <button id="submit-btn" onclick="submitForm()">Submit</button>
+        <div id="interaction-result">Waiting...</div>
+        <script>
+            function submitForm() {
+                const val = document.getElementById('test-input').value;
+                document.getElementById('interaction-result').innerText = "Typed: " + val;
+            }
+        </script>
+    </div>
+
+    <div class="box">
+        <h2>3. Console Logs</h2>
+        <button onclick="triggerLog()">Trigger Log</button>
+        <button onclick="triggerError()">Trigger Error</button>
+        <script>
+            function triggerLog() { console.log("Test Log Message"); }
+            function triggerError() { console.error("Test Error Message"); }
+        </script>
+    </div>
+
+    <div class="box">
+        <h2>4. Dialogs</h2>
+        <button onclick="triggerAlert()">Trigger Alert</button>
+        <button onclick="triggerConfirm()">Trigger Confirm</button>
+        <div id="dialog-result">Waiting for dialog...</div>
+        <script>
+            function triggerAlert() {
+                alert("This is a test alert");
+                document.getElementById('dialog-result').innerText = "Alert dismissed";
+            }
+            function triggerConfirm() {
+                const res = confirm("Do you accept?");
+                document.getElementById('dialog-result').innerText = "Confirm result: " + res;
+            }
+        </script>
+    </div>
+    
+    <div class="box">
+        <h2>5. Accessibility Tree Identity</h2>
+        <button aria-label="Aria Label Button">Icon Button</button>
+        <div role="status">Status Message</div>
+    </div>
+
+</body>
+</html>
