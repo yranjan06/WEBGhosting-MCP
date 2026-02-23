@@ -201,20 +201,18 @@ func (a *Agent) findElementOnce(page playwright.Page, userPrompt string) (string
 		},
 	}
 
-	// 3. Call LLM with a 15-second timeout to avoid silent hangs
+	// 3. Call LLM with base context because models like Kimi K2.5 take >40s to think
 	var resp openai.ChatCompletionResponse
 	for llmAttempt := 0; llmAttempt < 2; llmAttempt++ {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		log.Printf("[AI] → Calling %s API (timeout: 15s)...", a.model)
+		log.Printf("[AI] → Calling %s API...", a.model)
 		resp, err = a.client.CreateChatCompletion(
-			ctx,
+			context.Background(),
 			openai.ChatCompletionRequest{
 				Model:       a.model,
 				Messages:    messages,
 				Temperature: 0.1,
 			},
 		)
-		cancel()
 		if err == nil {
 			break
 		}
