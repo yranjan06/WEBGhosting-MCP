@@ -149,7 +149,10 @@ func (a *Agent) FindElement(page playwright.Page, userPrompt string) (string, er
 	const maxRetries = 3
 	var lastErr error
 
+	log.Printf("[AI] 🔍 Looking for element: '%s' (max %d attempts)...", userPrompt, maxRetries)
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
+		log.Printf("[AI] → Attempt %d/%d: snapshotting page...", attempt, maxRetries)
 		selector, confidence, err := a.findElementOnce(page, userPrompt)
 		if err != nil {
 			lastErr = err
@@ -170,7 +173,7 @@ func (a *Agent) FindElement(page playwright.Page, userPrompt string) (string, er
 			continue
 		}
 
-		log.Printf("[AI] Found selector '%s' (confidence: %.2f) on attempt %d", selector, confidence, attempt)
+		log.Printf("[AI] ✅ Found selector '%s' (confidence: %.2f) on attempt %d", selector, confidence, attempt)
 		return selector, nil
 	}
 
@@ -198,17 +201,20 @@ func (a *Agent) findElementOnce(page playwright.Page, userPrompt string) (string
 		},
 	}
 
-	// 3. Call LLM (with one internal retry on transient errors)
+	// 3. Call LLM with a 15-second timeout to avoid silent hangs
 	var resp openai.ChatCompletionResponse
 	for llmAttempt := 0; llmAttempt < 2; llmAttempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		log.Printf("[AI] → Calling %s API (timeout: 15s)...", a.model)
 		resp, err = a.client.CreateChatCompletion(
-			context.Background(),
+			ctx,
 			openai.ChatCompletionRequest{
 				Model:       a.model,
 				Messages:    messages,
 				Temperature: 0.1,
 			},
 		)
+		cancel()
 		if err == nil {
 			break
 		}
