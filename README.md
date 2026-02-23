@@ -21,7 +21,7 @@ A high-performance, stealthy, and AI-powered Model Context Protocol (MCP) server
     ```bash
     export AI_API_KEY=sk-...  # or OPENAI_API_KEY
     ```
-4.  **Proxy Server (Optional)**: Required if you get IP-banned from sites (e.g., Reddit block). Use a residential proxy like BrightData.
+4.  **Proxy Server (Optional)**: Required if you get IP-banned from sites (e.g., Reddit block). Use a residential proxy.
     ```bash
     export HTTP_PROXY=http://your-proxy-host.com:8080
     export PROXY_USERNAME=usr

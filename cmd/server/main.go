@@ -135,6 +135,7 @@ func main() {
 	// Register tools (common for both)
 	err = server.RegisterTool("browse", "Navigate to a URL with stealth mode enabled", func(args BrowseArgs) (*mcp_golang.ToolResponse, error) {
 		log.Printf("%s[BROWSE]%s Navigating to: %s", ColorBlue, ColorReset, args.URL)
+		engine.SetLastAction("browse: " + args.URL)
 		if err := engine.Navigate(args.URL); err != nil {
 			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Failed to navigate: %v", err))), nil
 		}
@@ -278,6 +279,7 @@ func main() {
 
 	err = server.RegisterTool("execute_js", "Execute Javascript on the page", func(args ExecuteJSArgs) (*mcp_golang.ToolResponse, error) {
 		log.Printf("%s[JS]%s Executing script...", ColorBlue, ColorReset)
+		engine.SetLastAction("execute_js")
 		result, err := engine.ExecuteScript(args.Script)
 		if err != nil {
 			return nil, fmt.Errorf("script execution failed: %w", err)
@@ -366,6 +368,7 @@ func main() {
 
 	err = server.RegisterTool("open_tab", "Open a new browser tab and switch to it", func(args OpenTabArgs) (*mcp_golang.ToolResponse, error) {
 		log.Printf("%s[TABS]%s Opening new tab...", ColorBlue, ColorReset)
+		engine.SetLastAction("open_tab")
 		idx, err := engine.OpenTab()
 		if err != nil {
 			return nil, fmt.Errorf("failed to open tab: %w", err)
@@ -420,6 +423,21 @@ func main() {
 		tabJSON, _ := json.MarshalIndent(tabs, "", "  ")
 		log.Printf("%s[TABS]%s Found %d tabs", ColorGreen, ColorReset, len(tabs))
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(string(tabJSON))), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// ─── Status Tool ───
+
+	type GetStatusArgs struct{}
+
+	err = server.RegisterTool("get_status", "Get current browser status: initialized state, active tab URL/title, tab count and last action. Use this to check if the server is alive and what it last did.", func(args GetStatusArgs) (*mcp_golang.ToolResponse, error) {
+		log.Printf("%s[STATUS]%s Fetching browser status...", ColorBlue, ColorReset)
+		status := engine.GetStatus()
+		statusJSON, _ := json.MarshalIndent(status, "", "  ")
+		log.Printf("%s[STATUS]%s OK — Last: %s (%ds ago)", ColorGreen, ColorReset, status.LastAction, status.SecondsSince)
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(string(statusJSON))), nil
 	})
 	if err != nil {
 		panic(err)
