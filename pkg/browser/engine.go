@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/playwright-community/playwright-go"
 	"github.com/ranjanyadav/web-mcp/pkg/stealth"
@@ -51,6 +52,11 @@ type Engine struct {
 
 	// Dialog handling
 	dialogAction string // "accept" or "dismiss"
+
+	// Status tracking for visibility
+	statMu         sync.Mutex
+	lastAction     string
+	lastActionTime time.Time
 }
 
 func New(cdpEndpoint string) (*Engine, error) {
@@ -62,6 +68,8 @@ func New(cdpEndpoint string) (*Engine, error) {
 		pages:           make([]playwright.Page, 0),
 		activeTab:       0,
 		dialogAction:    "accept",
+		lastAction:      "none",
+		lastActionTime:  time.Now(),
 	}, nil
 }
 
@@ -300,6 +308,55 @@ func (e *Engine) Close() {
 	if e.pw != nil {
 		e.pw.Stop()
 	}
+}
+
+// SetLastAction records the most recent tool action for status reporting.
+func (e *Engine) SetLastAction(action string) {
+	e.statMu.Lock()
+	defer e.statMu.Unlock()
+	e.lastAction = action
+	e.lastActionTime = time.Now()
+}
+
+// StatusInfo contains current browser state for reporting.
+type StatusInfo struct {
+	Initialized    bool   `json:"initialized"`
+	ActiveTabURL   string `json:"active_tab_url"`
+	ActiveTabTitle string `json:"active_tab_title"`
+	TabCount       int    `json:"tab_count"`
+	LastAction     string `json:"last_action"`
+	SecondsSince   int    `json:"seconds_since_last_action"`
+}
+
+// GetStatus returns a snapshot of the current browser state.
+func (e *Engine) GetStatus() StatusInfo {
+	e.statMu.Lock()
+	lastAction := e.lastAction
+	lastActionTime := e.lastActionTime
+	e.statMu.Unlock()
+
+	e.initMu.Lock()
+	initialized := e.initialized
+	e.initMu.Unlock()
+
+	info := StatusInfo{
+		Initialized:  initialized,
+		LastAction:   lastAction,
+		SecondsSince: int(time.Since(lastActionTime).Seconds()),
+	}
+
+	e.pagesMu.Lock()
+	info.TabCount = len(e.pages)
+	e.pagesMu.Unlock()
+
+	page := e.activePage()
+	if page != nil && !page.IsClosed() {
+		info.ActiveTabURL = page.URL()
+		title, _ := page.Title()
+		info.ActiveTabTitle = title
+	}
+
+	return info
 }
 
 func (e *Engine) Navigate(url string) error {
