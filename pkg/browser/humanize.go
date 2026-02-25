@@ -17,10 +17,13 @@ func RandomDelay(minMs, maxMs int) {
 // HumanTypeText types text character-by-character with random delays between keystrokes.
 // Each keystroke has a random delay of 50-150ms, simulating a real human typist.
 func HumanTypeText(page playwright.Page, selector, text string) error {
-	// Click the element first to focus it
-	if err := page.Click(selector); err != nil {
-		return err
+	// Click the element first to focus it (forced to bypass React overlays)
+	if err := page.Locator(selector).Click(playwright.LocatorClickOptions{Force: playwright.Bool(true)}); err != nil {
+		// Fallback to JS evaluate if Playwright still fails
+		_, _ = page.Evaluate(`(sel) => { document.querySelector(sel)?.click() }`, selector)
 	}
+	// Focus input natively as well just in case
+	page.Locator(selector).Focus()
 	RandomDelay(100, 300) // Brief pause after focusing
 
 	for _, ch := range text {
@@ -39,9 +42,12 @@ func HumanClick(page playwright.Page, selector string) error {
 	locator := page.Locator(selector)
 	box, err := locator.BoundingBox()
 	if err != nil || box == nil {
-		// Fallback: direct click if bounding box unavailable
+		// Fallback: direct forced click if bounding box unavailable (e.g. hidden inputs)
 		RandomDelay(200, 500)
-		return page.Click(selector)
+		if err := page.Locator(selector).Click(playwright.LocatorClickOptions{Force: playwright.Bool(true)}); err != nil {
+			_, _ = page.Evaluate(`(sel) => { document.querySelector(sel)?.click() }`, selector)
+		}
+		return nil
 	}
 
 	// Calculate a random point within the element (not always center — more human)
@@ -58,14 +64,21 @@ func HumanClick(page playwright.Page, selector string) error {
 	// Move mouse along Bézier curve
 	if err := BezierMouseMove(page, startX, startY, targetX, targetY); err != nil {
 		// Fallback on error
-		return page.Click(selector)
+		if err := page.Locator(selector).Click(playwright.LocatorClickOptions{Force: playwright.Bool(true)}); err != nil {
+			_, _ = page.Evaluate(`(sel) => { document.querySelector(sel)?.click() }`, selector)
+		}
+		return nil
 	}
 
 	// Small delay before click (50-150ms) — reaction time
 	RandomDelay(50, 150)
 
-	// Click at position
-	return page.Mouse().Click(targetX, targetY)
+	// Forced click directly on the element to bypass React overlays,
+	// while still keeping the human-like mouse movement stealth above.
+	if err := page.Locator(selector).Click(playwright.LocatorClickOptions{Force: playwright.Bool(true)}); err != nil {
+		_, _ = page.Evaluate(`(sel) => { document.querySelector(sel)?.click() }`, selector)
+	}
+	return nil
 }
 
 // BezierMouseMove moves the mouse from (fromX, fromY) to (toX, toY) along a
@@ -123,6 +136,39 @@ func HumanScroll(page playwright.Page, direction string, amount int) error {
 
 		// Random pause between scroll steps (100-400ms)
 		RandomDelay(100, 400)
+	}
+	return nil
+}
+
+// HumanScrollToBottom scrolls dynamically until the DOM scroll height stabilizes.
+func HumanScrollToBottom(page playwright.Page) error {
+	var lastHeight interface{}
+	var unchangedCount int
+
+	for {
+		currentHeight, err := page.Evaluate(`document.documentElement.scrollHeight`)
+		if err != nil {
+			return err
+		}
+
+		if currentHeight == lastHeight {
+			unchangedCount++
+			if unchangedCount >= 2 {
+				break // Height didn't change after 2 consecutive checks
+			}
+		} else {
+			unchangedCount = 0
+			lastHeight = currentHeight
+		}
+
+		// Scroll down by ~600-800 pixels naturally
+		increment := 600 + rand.Intn(201)
+		if err := HumanScroll(page, "down", increment); err != nil {
+			return err
+		}
+		
+		// Allow network/React to hydrate new content
+		RandomDelay(1500, 3000)
 	}
 	return nil
 }

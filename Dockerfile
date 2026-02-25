@@ -1,29 +1,27 @@
-# Build Stage
-FROM golang:1.22-bookworm AS builder
+FROM golang:1.22-bookworm
 
 WORKDIR /app
 
-# Cache dependencies
+# Install basic system requirements
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    tzdata \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cache Go modules
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source
+# Copy source code and build the binary
 COPY . .
+RUN go build -o /app/webmcp cmd/server/main.go
 
-# Build binary
-RUN go build -o webmcp ./cmd/server
+# Install Playwright dependencies and the exact Chromium browser version requried by the module
+RUN go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps
 
-# Runtime Stage
-FROM mcr.microsoft.com/playwright:v1.49.0-jammy
-
-WORKDIR /app
-
-# Copy binary from builder
-COPY --from=builder /app/webmcp .
-
-# Expose HTTP port for SSE mode
+# Expose the HTTP/SSE port if user wants to run in remote mode (optional)
 EXPOSE 8080
 
-# Run
-ENTRYPOINT ["./webmcp"]
-CMD ["--port=8080"]
+# Default entrypoint runs the MCP Server in stdio mode, but users can override
+ENTRYPOINT ["/app/webmcp"]

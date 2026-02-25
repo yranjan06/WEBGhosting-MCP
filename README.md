@@ -1,105 +1,104 @@
-# GO-WebMcp
+# Go-WebMCP: Intelligent Stealth Browser MCP
 
-A high-performance, stealthy, and AI-powered Model Context Protocol (MCP) server for web automation. Built in Go, this server acts as a bridge between LLM agents (like Claude in VS Code/Cursor) and a Playwright-driven browser.
+Go-WebMCP is a highly scalable, production-ready **Model Context Protocol (MCP)** server built in Go. It operates as an **Intelligent Stealth Browser Automation Proxy**, allowing internal LLMs and Autonomous Agents to navigate the web, bypass anti-bot detections, and extract highly structured schema data at scale.
 
-## Key Features
+## Core Features
+* **LLM-Powered Navigation:** Navigate the web using natural language (e.g., `click({"prompt": "Login button"})`).
+* **Stealth Hardening (Humanize Mode):** Evades strict anti-bot systems (DataDome, Cloudflare) via Playwright-level Bézier curve mouse paths, random jitter, and human typing delays.
+* **Map-Reduce JSON Extraction:** Solves the context-limit problem of massive Single Page Applications (SPAs). It splits 300k+ character React payloads into smart boundary chunks, processes them via heavily parallelized LLM extraction limits, and stitches them seamlessly back into validated JSON.
+* **W3C WebMCP Readiness:** Automatically detects and prefers native `navigator.modelContext` endpoints if exposed by the target website to reduce inference costs.
 
-1. **Human-like Behavior Simulation**: Replaces instantaneous, robotic inputs with algorithms that mimic human interaction. Features include Bézier curve mouse movements, randomized typing delays, and natural scrolling.
-2. **Stealth Mode (Evasion Tech)**: Uses embedded JavaScript evasion techniques to bypass bot detection. Spoofs Canvas fingerprinting, WebGL hashes, enumerated fonts, and Permissions API states.
-3. **Advanced AI Perception**: Replaces brittle XPath lookups with local Accessibility Tree (AX Tree) snapshots sent to OpenAI. Features smart DOM cleaning, confidence scoring, and fallback mechanisms for natural language element finding.
-4. **Robust Error Recovery**: Built-in exponential backoff for transient web issues. Automatically re-snapshots the DOM if elements aren't found on the first try and handles LLM timeouts gracefully.
-5. **Multi-Tab Architecture**: Thread-safe management of multiple browser tabs at once. Seamlessly open, switch, and close tabs while retaining context.
+## Quick Start
 
-## Prerequisites
-
-1.  **Go 1.21+**
-2.  **Playwright Browsers**:
-    ```bash
-    go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps
-    ```
-3.  **OpenAI API Key**: Required for the AI Perception module (`click`, `type` and semantic querying).
-    ```bash
-    export AI_API_KEY=sk-...  # or OPENAI_API_KEY
-    ```
-4.  **Proxy Server (Optional)**: Required if you get IP-banned from sites (e.g., Reddit block). Use a residential proxy.
-    ```bash
-    export HTTP_PROXY=http://your-proxy-host.com:8080
-    export PROXY_USERNAME=usr
-    export PROXY_PASSWORD=pwd
-    ```
-
-## Installation
+### 1. Local Binary Setup (IDE usage)
+You can plug Go-WebMCP directly into AI-powered IDEs (like Cursor, Windsurf, or Claude Desktop) as a local extension.
 
 ```bash
-git clone https://github.com/ranjanyadav/web-mcp.git
-cd web-mcp
-go mod tidy
-go build -o webmcp ./cmd/server
+# Clone the repository
+git clone https://github.com/your-username/go-webmcp.git
+cd go-webmcp
+
+# Build the binary
+go build -o webmcp cmd/server/main.go
+
+# Install Playwright system dependencies
+go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps
 ```
 
-## Configuring IDEs (Antigravity, Cursor, Claude Desktop, VS Code)
-
-Add the following to your MCP configuration (`mcp_config.json`, `settings.json`, or `claude_desktop_config.json`):
-
+**Add to IDE MCP Configuration (`mcp.json` / `settings.json`):**
 ```json
 {
   "mcpServers": {
     "go-webmcp": {
-      "command": "/absolute/path/to/web-mcp/webmcp",
+      "command": "/absolute/path/to/webmcp",
       "env": {
         "AI_API_KEY": "sk-your-openai-or-custom-key",
         "AI_BASE_URL": "https://api.openai.com/v1",
         "AI_MODEL": "gpt-4o",
-        "HTTP_PROXY": "http://your-residential-proxy.zone:1234",
-        "PROXY_USERNAME": "user",
-        "PROXY_PASSWORD": "password",
-        "BROWSER_HEADLESS": "true",
-        "BROWSER_USER_DATA_DIR": "/absolute/path/to/save/cookies"
+        "EXTRACTION_BASE_URL": "https://integrate.api.nvidia.com/v1",
+        "EXTRACTION_MODEL": "meta/llama-3.1-8b-instruct",
+        "EXTRACTION_API_KEY": "nvapi-..."
       }
     }
   }
 }
 ```
 
-*Note: All environment variables are optional. `AI_API_KEY` is only needed if you use AI-driven tools like `click` and `type`. `BROWSER_HEADLESS` runs the browser invisibly. `BROWSER_USER_DATA_DIR` keeps you logged into websites across server restarts.*
+### 2. Docker Deployment (Containerized Orchestration)
+For headless parallel scraping, run Go-WebMCP within an isolated container.
 
-## Tools Available (16 Total)
+```bash
+# Build the Docker image
+docker build -t go-webmcp .
 
-The server exposes 16 tightly integrated tools to the LLM:
+# Run the container in HTTP/SSE mode (Exposing port 8080)
+docker run -p 8080:8080 \
+  -e AI_API_KEY="sk-..." \
+  -e BROWSER_HEADLESS="true" \
+  go-webmcp --port=8080
+```
 
-**Navigation & State**
-- `browse(url)`: Navigates the active tab to a website.
-- `get_url()`: Returns the current page URL.
-- `wait_for_load_state(state)`: Waits for network idle or DOM load.
-- `wait_for_selector(selector)`: Waits for a specific element to appear.
+## Available Tooling (MCP Capabilities)
 
-**Interaction (Humanized & AI-driven)**
-- `click(prompt)`: AI-driven, hesitates, moves mouse via Bézier curve, and clicks based on semantic description.
-- `type(prompt, text)`: AI-driven, finds input field, and types with randomized human speed (50-150ms/char).
-- `scroll(direction, amount)`: Smoothly scrolls the page mimicking trackpad/mouse wheel.
-- `mouse_click(selector)`: Direct CSS-based click.
-- `fill_element(selector, text)`: Direct CSS-based instant fill.
-- `hover(selector)`: Hovers over an element.
+- **`browse`**: Navigate to a URL stealthily.
+- **`click`**: Natural-language driven smart clicking.
+- **`type`**: Humanized typing action on a targeted element.
+- **`fill_form`**: Batch fill inputs seamlessly.
+- **`scroll`** / **`scroll_to_bottom`**: Mechanically hydrate infinite feeds gracefully.
+- **`execute_js`**: Run native Javascript inside the V8 engine.
+- **`configure_dialog`**: Auto-manage or bypass blocking JS `alert()` overrides.
+- **`extract`**: The crown jewel—feed it a `JSON Schema` and it will automatically chunk, map-reduce, and parse unstructured dirty HTML into strict JSON structures.
 
-**Multi-Tab Management**
-- `open_tab()`: Opens a new blank tab and automatically focuses it.
-- `switch_tab(index)`: Switches the active context to the tab at the given 0-based index.
-- `close_tab(index)`: Closes a specified tab.
-- `list_tabs()`: Returns an array of all open tabs, tracking their URLs and Titles.
+## Python Integration Example
 
-**Execution & Extraction**
-- `execute_js(script)`: Evaluates arbitrary JavaScript in the page context.
-- `execute_js_on_element(selector, script)`: Evaluates JavaScript scoped to a specific element.
-- `screenshot()`: Captures a full-page or viewport screenshot encoded as base64.
+When writing standalone Python agents, use stdio mode to boot up the target MCP sub-process:
 
-## Data Flow Example
+```python
+import subprocess
+import json
+import os
 
-1.  **User Request**: "Go to google.com and search for kittens"
-2.  **MCP Server**: LLM Calls `browse("google.com")`.
-3.  **Browser Engine**: Launches Chromium, creates a tab, and injects 4 stealth JS scripts.
-4.  **MCP Server**: LLM Calls `type("Search box", "kittens")`.
-5.  **AI Perception**:
-    -   Takes accessibility snapshot of `google.com`.
-    -   Sends cleaned snapshot + "Search box" prompt to OpenAI.
-    -   OpenAI returns `{"selector": "textarea[name='q']", "confidence": 0.98}`.
-6.  **Browser Engine**: Moves mouse along a curved path to the input, hesitates, and types "kittens" with realistic delays.
+env = os.environ.copy()
+env["AI_API_KEY"] = "sk-..."
+
+process = subprocess.Popen(
+    ['./webmcp'],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    text=True,
+    env=env
+)
+
+# Call an MCP Server Tool easily via JSON-RPC
+msg = {
+    "jsonrpc": "2.0", 
+    "method": "tools/call", 
+    "id": 1,
+    "params": {
+        "name": "browse",
+        "arguments": {"url": "https://news.ycombinator.com"}
+    }
+}
+process.stdin.write(json.dumps(msg) + '\n')
+process.stdin.flush()
+```

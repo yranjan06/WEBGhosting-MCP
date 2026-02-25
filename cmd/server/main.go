@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	mcp_golang "github.com/metoro-io/mcp-golang"
@@ -32,7 +33,8 @@ type TypeArgs struct {
 }
 
 type ExtractArgs struct {
-	Schema string `json:"schema" jsonschema:"required,description=JSON schema or description of data to extract"`
+	Schema        interface{} `json:"schema" jsonschema:"required,description=JSON schema or description of data to extract"`
+	ModelOverride string      `json:"model_override,omitempty" jsonschema:"description=Optional model to use for extraction instead of the default agent model (e.g. gpt-4o)"`
 }
 
 const (
@@ -56,6 +58,7 @@ func main() {
 	// ─── Flags ───
 	cdpEndpoint := flag.String("connect-cdp", "", "WebSocket debugger URL to connect to an existing browser")
 	port := flag.Int("port", 0, "Port for HTTP/SSE mode (default: 0 = stdio mode)")
+	humanize := flag.Bool("humanize", true, "Enable human-like mouse movements, scrolling, and typing delays to bypass anti-bot detection")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "%s%sGO-WebMcp%s v%s — AI-powered stealth browser for LLM agents\n\n", ColorBold, ColorCyan, ColorReset, Version)
@@ -112,6 +115,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  %sRun: go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps%s\n\n", ColorDim, ColorReset)
 		os.Exit(1)
 	}
+	engine.Humanize = *humanize
 	defer func() {
 		engine.Close()
 		fmt.Fprintf(os.Stderr, "\n  %s✓ Shutdown complete%s\n", ColorDim, ColorReset)
@@ -147,6 +151,15 @@ func main() {
 	}
 
 	err = server.RegisterTool("click", "Click an element identified by a natural language prompt", func(args ClickArgs) (*mcp_golang.ToolResponse, error) {
+		// Smart Fallback: If prompt is actually a URL, just bypass AI and browse to it directly!
+		if strings.HasPrefix(strings.ToLower(args.Prompt), "http://") || strings.HasPrefix(strings.ToLower(args.Prompt), "https://") {
+			log.Printf("%s[CLICK]%s Prompt is a URL '%s'. Falling back to direct navigation.", ColorBlue, ColorReset, args.Prompt)
+			if err := engine.Navigate(args.Prompt); err != nil {
+				return nil, fmt.Errorf("failed to navigate to URL %s: %w", args.Prompt, err)
+			}
+			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Navigated to %s directly instead of clicking.", args.Prompt))), nil
+		}
+
 		if aiAgent == nil {
 			return nil, fmt.Errorf("AI agent not initialized")
 		}
@@ -197,25 +210,24 @@ func main() {
 	}
 
 	err = server.RegisterTool("extract", "Extract page content as text or structured data based on a schema description", func(args ExtractArgs) (*mcp_golang.ToolResponse, error) {
-		log.Printf("%s[EXTRACT]%s Schema: %s", ColorBlue, ColorReset, args.Schema)
+		log.Printf("%s[EXTRACT]%s Schema provided", ColorBlue, ColorReset)
+		
+		if aiAgent == nil {
+			return nil, fmt.Errorf("AI agent is not initialized (missing API key?)")
+		}
+
 		page, err := engine.Page()
 		if err != nil {
 			return nil, fmt.Errorf("browser not ready: %w", err)
 		}
-		title, _ := page.Title()
-		url := page.URL()
-		// Get page text content for extraction
-		textContent, err := page.Locator("body").InnerText()
+		
+		extractedJson, err := aiAgent.ExtractData(page, args.Schema, args.ModelOverride)
 		if err != nil {
-			textContent = "(could not extract text)"
+			return nil, fmt.Errorf("extraction failed: %w", err)
 		}
-		// Truncate if too large
-		if len(textContent) > 20000 {
-			textContent = textContent[:20000] + "\n...(truncated)"
-		}
-		result := fmt.Sprintf("Page: %s\nURL: %s\nSchema requested: %s\n\nContent:\n%s", title, url, args.Schema, textContent)
-		log.Printf("%s[EXTRACT]%s Success: Extracted %d chars", ColorGreen, ColorReset, len(textContent))
-		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(result)), nil
+		
+		log.Printf("%s[EXTRACT]%s Success", ColorGreen, ColorReset)
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(extractedJson)), nil
 	})
 	if err != nil {
 		panic(err)
@@ -326,6 +338,18 @@ func main() {
 		}
 		log.Printf("%s[SCROLL]%s Success", ColorGreen, ColorReset)
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Scrolled %s by %d pixels", args.Direction, args.Amount))), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	err = server.RegisterTool("scroll_to_bottom", "Dynamically scroll the page to the bottom, automatically waiting for new content to load if it's an infinite feed", func(args struct{}) (*mcp_golang.ToolResponse, error) {
+		log.Printf("%s[SCROLL]%s Scrolling continuously to bottom", ColorBlue, ColorReset)
+		if err := engine.ScrollToBottom(); err != nil {
+			return nil, fmt.Errorf("adaptive scroll failed: %w", err)
+		}
+		log.Printf("%s[SCROLL]%s Success (reached true bottom)", ColorGreen, ColorReset)
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent("Successfully reached the bottom of the page.")), nil
 	})
 	if err != nil {
 		panic(err)

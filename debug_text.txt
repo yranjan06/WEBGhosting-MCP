@@ -1,0 +1,610 @@
+Jobs
+Popular categories
+IT jobs
+Sales jobs
+Marketing jobs
+Data Science jobs
+HR jobs
+Engineering jobs
+Jobs in demand
+Fresher jobs
+MNC jobs
+Remote jobs
+Work from home jobs
+Walk-in jobs
+Part-time jobs
+Jobs by location
+Jobs in Delhi
+Jobs in Mumbai
+Jobs in Bangalore
+Jobs in Hyderabad
+Jobs in Chennai
+Jobs in Pune
+Companies
+Explore categories
+Unicorn
+MNC
+Startup
+Product based
+Internet
+Explore collections
+Top companies
+IT companies
+Fintech companies
+Sponsored companies
+Featured companies
+Research companies
+by
+Ambitionbox
+Interview questions
+Company salaries
+Company reviews
+Salary Calculator
+Services
+Resume writing
+Text resume
+Visual resume
+Resume critique
+Find Jobs
+Jobs4u
+Priority applicant
+Contact us
+Get recruiter's attention
+Resume display
+Monthly subscriptions
+Basic & premium plans
+Free resume resources
+Resume maker
+Resume quality score
+Resume samples
+Job letter samples
+data engineering
+LoginRegister
+For employers
+Buy online
+Naukri Talent Cloud
+Employer Login
+All Filters
+Experience
+Any
+0 Yrs
+Any
+Salary
+
+0-3 Lakhs
+(608)
+
+3-6 Lakhs
+(3622)
+
+6-10 Lakhs
+(6735)
+
+10-15 Lakhs
+(5905)
+
+View More
+Location
+
+Bengaluru
+(5359)
+
+Hyderabad
+(3088)
+
+Pune
+(2221)
+
+Delhi / NCR
+(1998)
+
+View More
+Department
+
+Engineering - Software & QA
+(8469)
+
+Data Science & Analytics
+(3619)
+
+IT & Information Security
+(403)
+
+Other
+(214)
+
+View More
+Company type
+
+Foreign MNC
+(4855)
+
+Corporate
+(2057)
+
+Indian MNC
+(1118)
+
+Startup
+(543)
+
+View More
+Work mode
+
+Work from office
+(11712)
+
+Hybrid
+(1368)
+
+Remote
+(530)
+
+Top companies
+
+Accenture
+(1233)
+
+Tata Consultancy Services
+(260)
+
+IBM
+(196)
+
+Infosys
+(137)
+
+View More
+Industry
+
+IT Services & Consulting
+(8376)
+
+Software Product
+(633)
+
+Recruitment / Staffing
+(550)
+
+Financial Services
+(399)
+
+View More
+Role category
+
+Software Development
+(6714)
+
+Data Science & Machine Learning
+(2275)
+
+DBA / Data warehousing
+(1185)
+
+Business Intelligence & Analytics
+(734)
+
+View More
+Stipend
+
+Unpaid
+(46)
+
+10k-20k
+(4)
+
+20k-30k
+(1)
+
+40k-50k
+(1)
+
+View More
+Duration
+
+2 Months
+(2)
+
+3 Months
+(10)
+
+6 Months
+(6)
+
+Flexible
+(35)
+
+Education
+
+Any Postgraduate
+(9664)
+
+M.Tech
+(576)
+
+Any Graduate
+(10086)
+
+B.Tech/B.E. - Bachelor of Technology / Engineering
+(3509)
+
+View More
+Posted by
+
+Company Jobs
+(12111)
+
+Consultant Jobs
+(1499)
+
+Freshness
+Select
+1 - 20 of 13610
+Data Engineering Jobs
+Sort by: Relevance
+Cloud Data Engineer
+Apple
+4.3
+692 Reviews
+4-7 Yrs
+Hyderabad
+ JobSummary: The people here at Apple don t just build products they build the kind ...
+Application engineeringSales operationscassandraAnalyticalManager TechnologyBusiness intelligencebig dataData warehousing
+3+ weeks ago
+Save
+Cloud Data Engineer
+Google
+4.4
+1888 Reviews
+0 Yrs
+Gurugram, Bengaluru
+Minimum qualifications: Bachelor s degree in Engineering, Computer Science, a related...
+Product managementC++Product engineeringCodingData structuresData qualityTroubleshootingData mining
+3+ weeks ago
+Save
+Make the most out of Naukri by registering for free!
+Personalised recommendations
+Recruiters directly reach out
+Real-time updates
+Boost visibility
+Register for free
+Director, AI and Data Solution Engineering
+Salesforce
+3.9
+1140 Reviews
+12-17 Yrs
+Bengaluru
+. Technical Depth: Proven expertise in AI frameworks and Data Cloud platforms (Salesfor...
+Product engineeringSalesdata scienceMachine learningCloudBusiness strategycxoCRM
+2 days ago
+Save
+Join us now – We're hiring fast
+Horizontal Integration
+GCP Data Engineer | Face To face Interview
+4-9 Yrs
+20-35 Lacs PA
+Hybrid - Bengaluru
+Acquire,cleanse,and ingest structured and unstructured data on the cloud platforms (in batch or real time) from internal and external data sources Experience: 4-10 Years
+Bigquery
+GCP
+Python
+Bigtable
+Pubsub
+Gcp Bigquery
+Dataproc
+Looker
+Matching jobs promoted by companies
+Director - Data Engineering - Agentic AI
+AMERICAN EXPRESS
+4.1
+3793 Reviews
+10-15 Yrs
+Bengaluru
+ At American Express, our culture is built on a 175-year history of innovation, shared...
+BackendSchemaWorkflowSystem designProduct designCustomer serviceOpen sourceDistribution system
+1 day ago
+Save
+Gcp Data Engineer
+Deloitte Consulting
+3.7
+22560 Reviews
+5-10 Yrs
+Hybrid - Mumbai (All Areas)
+Design and optimize batch and real-time data pipelines using BigQuery, Dataflow, Datapr...
+GCPBigqueryAirflowData FlowDataprocGoogle Cloud PlatformsGcp CloudGoogle
+5 days ago
+Save
+Manager, Data Engineering
+Cargill
+3.9
+2095 Reviews
+10-18 Yrs
+Hybrid - Bengaluru
+Job Purpose and ImpactThe Supervisor II, Data Engineering job sets goals and objectives...
+Team Managementmanager data engineeringdata engineeringPeople Management SkillsTeamEngineeringManagement skillsPeople management
+3 weeks ago
+Save
+Gcp Data Engineer
+EY
+3.4
+14112 Reviews
+4-9 Yrs
+Hybrid - Hyderabad, Pune, Bengaluru
+Join Digital Engineering team and you will work with multi-disciplinary teams from arou...
+JavaEtl DevelopmentGcp CloudPythonGCPGoogle Cloud PlatformsCloud PlatformETL
+5 days ago
+Save
+We are hiring "Senior Data AI Engineer"
+Sutherland
+3.2
+306 Reviews
+Snowflake Data Engineer
+6-9 Yrs
+Not disclosed
+Hybrid - Bengaluru
+Drive adoption of DBT (preferred) or similar transformation frameworks for standardised modelling,testing,and documentationExperience designing and maintaining enterprise-grade data pipelines Required Skills Experience with workflow orchestration platforms such as Airflow,Dagster,or similar. . Nice-to-Have / Preferred
+Snowsql
+Snowflake
+Data Build Tool
+SQL
+Data
+Tools
+Build
+Build Automation
+Matching jobs promoted by companies
+
+Filter jobs by
+salary
+
+0-3 Lakhs
+
+608 Jobs
+
+3-6 Lakhs
+
+3622 Jobs
+
+6-10 Lakhs
+
+6735 Jobs
+
+10-15 Lakhs
+
+5905 Jobs
+
+GCP Data Engineer | Face To face Interview
+Horizontal Talent
+Posted by Horizontal Integration
+4-9 Yrs
+20-35 Lacs PA
+Hybrid - Bengaluru
+Acquire, cleanse, and ingest structured and unstructured data on the cloud platforms (i...
+BigqueryGCPPythonBigtablePubsubGcp BigqueryDataprocLooker
+5 days ago
+Save
+Assistant Manager - Data Engineering
+LatentView
+3.5
+294 Reviews
+4-9 Yrs
+Hybrid - Gurugram
+Solid experience with Apache Spark for large-scale data processing. Good understanding ...
+AWSData BricksPythonIOTAmazon RedshiftKinesisData LakeSpark
+Prefers women
+2 weeks ago
+Save
+Senior Manager Data Engineering
+Anheuser Busch InBev
+3.3
+1393 Reviews
+10-15 Yrs
+Bengaluru
+At least 3 years of experience with Azure (MUST) including knowledge of platform servic...
+systemlinuxdata warehousingtroubleshootingmppsqlnosql databasesWarehouse
+3+ weeks ago
+Save
+
+Filter jobs by
+location
+
+Bengaluru
+
+5359 Jobs
+
+Hyderabad
+
+3088 Jobs
+
+Pune
+
+2221 Jobs
+
+Delhi / NCR
+
+1998 Jobs
+
+Senior Manager Data Engineering
+Electronic Arts
+4.0
+261 Reviews
+8-13 Yrs
+Hyderabad
+The ideal candidate has extensive experience designing and operating large-scale data p...
+Computer scienceCodingWorkflowHealthcareSystem designTroubleshootingDistribution systemAnalytics
+2 weeks ago
+Save
+Director Applied AI ML & Data Engineering
+JPMorgan Chase Bank
+3.8
+7659 Reviews
+5-6 Yrs
+Bengaluru
+Formal training or certification on Machine Learning concepts and 10+ years applied exp...
+Computer scienceC++Machine learningCloudAgileManager TechnologySystem designNatural language processing
+6 days ago
+Save
+Data Engineering - Senior Manager
+Pepsico
+4.1
+3124 Reviews
+10-15 Yrs
+Hyderabad
+OverviewAs a data engineering manager, you will be the key technical expert overseeing ...
+Data Engineeringsnowflakekubernetespythonperformance tuningscalaamazon redshiftdata warehousing
+6 days ago
+Save
+How relevant do you find these jobs?
+Not Useful
+Neutral
+Very Useful
+Data Engineering Research Manager
+Accenture
+3.7
+71891 Reviews
+12-17 Yrs
+Hyderabad
+Location:Hyderabad . Must have skills:Practice in designing and development of data pip...
+data engineeringpythongoogle cloud platformaidata warehousingdata quality managementmachine learningmaster data management
+6 days ago
+Save
+Data Engineering Manager
+Ecolab Global Services
+3.5
+205 Reviews
+8-13 Yrs
+Pune
+ Summary: The Data Architect will play a strategic role in designing, optimizing,...
+Data EngineeringAirflowAzureData LineageComplianceArchitecturePower BiAi
+Just now
+Save
+DE&A - Core - Cloud Data Engineer
+Zensar
+3.7
+2942 Reviews
+14-19 Yrs
+Bengaluru
+Deep expertise in Microsoft Azure, including Azure Data Factory, Azure Synapse Analytic...
+ArchitectureMachine learningCloudBusiness strategymicrosoftStakeholder managementRFPAWS
+2 days ago
+Save
+
+Filter jobs by
+Top Companies
+
+Accenture
+
+1233 Jobs
+
+Tata Consultancy Services
+
+260 Jobs
+
+IBM
+
+196 Jobs
+
+Infosys
+
+137 Jobs
+
+GCP Data Engineer - BigQuery
+Tata Consultancy Services
+3.3
+111794 Reviews
+5-10 Yrs
+Kochi, Hyderabad, Bengaluru
+Required Skills: . Experience : 5 to 10 years . Strong experience in programming langua...
+GCPCloud SqlCloud StorageBigtableCloud OrchestrationData FlowDataprocSQL
+Today
+Save
+D&T Manager Data Engineering
+General Mills
+4.1
+950 Reviews
+15-22 Yrs
+Hybrid - Mumbai (All Areas)
+Experience with cloud-based data platforms is essential, as is experience working in an...
+Data EngineeringData WarehousingETLDataManagementWarehouseTEngineering
+Few hours ago
+Save
+Assistant Manager - Data Engineering
+LatentView
+3.5
+294 Reviews
+5-8 Yrs
+Bengaluru
+Discovery Framework: Design the methodology for auditing the"As-Is" environment, identi...
+hivepythonscalaserverlessmicrosoft azuredata warehousingazure data factorymachine learning
+Few hours ago
+Save
+Data Engineering Manager
+Tavant Technologies
+3.8
+700 Reviews
+11-16 Yrs
+Noida
+Bachelor s degree in Engineering (BE), Technology (BTech), or an equivalent fieldMinimu...
+AutomationPerformance managementData modelingDatastageAgileEngineering ManagerData qualitySSIS
+1 week ago
+Save
+Previous
+12345678910
+Next
+Increase your profile visibility up to 3 times
+
+Become visible to more recruiters with Resume Display Service.
+
+It's a paid service
+Apply to 13610 Data Engineering Jobs on Naukri.com
+Bangalore
+•
+Engineer Jobs In Bangalore
+•
+Mechanical Engineer Jobs In Bangalore
+•
+Manager Jobs In Bangalore
+•
+Production Engineer Jobs In Bangalore
+•
+Quality Engineer Jobs In Bangalore
+•
+Design Engineer Jobs In Bangalore
+•
+Project Manager Jobs In Bangalore
+•
+Software Engineer Jobs In Bangalore
+•
+Project Engineer Jobs In Bangalore
+•
+Electrical Engineer Jobs In Bangalore
+Delhi NCRHyderabad SecunderabadMumbaiChennaiPuneKolkataAhmedabadGurgaonNoidaAll JobsTop Companies
+HomeData Engineering Jobs
+
+See 131 jobs in Featured Companies
+
+Get 3X more profile views from recruiters
+
+Increase your chances of callback with Naukri FastForward
+
+Know More
+We use cookies to improve your experience. By continuing to browse the site, you agree to our Privacy Policy & Cookie Policy.
+Got it
+Connect with us
+About us
+Careers
+Employer home
+Sitemap
+Credits
+Help center
+Summons/Notices
+Grievances
+Report issue
+Privacy policy
+Terms & conditions
+Fraud alert
+Trust & safety
+Apply on the go
+Get real-time job updates on our App
+All trademarks are the property of their respective owners
+All rights reserved © 2025 Info Edge (India) Ltd.
+Our businesses
