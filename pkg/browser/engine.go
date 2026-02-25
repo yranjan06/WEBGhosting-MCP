@@ -37,6 +37,9 @@ type Engine struct {
 	initErr     error
 	CDPEndpoint string
 
+	// Stealth Configuration
+	Humanize bool
+
 	// Multi-tab support
 	pagesMu   sync.Mutex
 	pages     []playwright.Page
@@ -70,6 +73,7 @@ func New(cdpEndpoint string) (*Engine, error) {
 		dialogAction:    "accept",
 		lastAction:      "none",
 		lastActionTime:  time.Now(),
+		Humanize:        true,
 	}, nil
 }
 
@@ -521,6 +525,9 @@ func (e *Engine) HumanType(selector, text string) error {
 	if page == nil {
 		return fmt.Errorf("no active tab")
 	}
+	if !e.Humanize {
+		return page.Locator(selector).Fill(text)
+	}
 	return HumanTypeText(page, selector, text)
 }
 
@@ -532,6 +539,9 @@ func (e *Engine) HumanClickElement(selector string) error {
 	page := e.activePage()
 	if page == nil {
 		return fmt.Errorf("no active tab")
+	}
+	if !e.Humanize {
+		return page.Locator(selector).Click()
 	}
 	return HumanClick(page, selector)
 }
@@ -545,7 +555,30 @@ func (e *Engine) HumanScrollPage(direction string, amount int) error {
 	if page == nil {
 		return fmt.Errorf("no active tab")
 	}
+	if !e.Humanize {
+		deltaY := float64(amount)
+		if direction == "up" {
+			deltaY = -deltaY
+		}
+		return page.Mouse().Wheel(0, deltaY)
+	}
 	return HumanScroll(page, direction, amount)
+}
+
+// ScrollToBottom scrolls the page completely to the bottom dynamically.
+func (e *Engine) ScrollToBottom() error {
+	if err := e.EnsureInitialized(); err != nil {
+		return err
+	}
+	page := e.activePage()
+	if page == nil {
+		return fmt.Errorf("no active tab")
+	}
+	if !e.Humanize {
+		_, err := page.Evaluate(`window.scrollTo(0, document.body.scrollHeight)`)
+		return err
+	}
+	return HumanScrollToBottom(page)
 }
 
 // ─── Multi-tab Management ───
