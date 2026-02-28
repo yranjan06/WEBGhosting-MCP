@@ -1,20 +1,40 @@
-# Binary
+# Binaries
 webmcp
+server
+probe_sse
 *.exe
+*.out
+*.test
 
 # OS files
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
+*.code-workspace
 
 # Environment
 .env
 .env.local
+.env.production
 
-# Test
+# Debug artifacts
+debug_*.py
+debug_*.txt
+*.jsonl
+input.txt
+
+# Go
+vendor/
 coverage.out
+*.prof
+
+# Docker
+docker-compose.override.yml
+
+# Tool versions
+.tool-versions

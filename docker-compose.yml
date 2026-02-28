@@ -6,8 +6,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    # Persistence for browser cache can be added here if needed
-    # volumes:
-    #   - ./browser-cache:/root/.cache/ms-playwright
+      - AI_API_KEY=${AI_API_KEY}
+      - AI_MODEL=${AI_MODEL:-gpt-4o}
+      - BROWSER_HEADLESS=true
+    command: ["--port=8080"]
     restart: unless-stopped
