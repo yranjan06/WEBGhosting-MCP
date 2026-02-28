@@ -29,165 +29,19 @@ Built with ❤️ for the AI community.
 | **Universal LLM Support** | Works with OpenAI, Ollama, Groq, Together, NVIDIA NIM, LM Studio — any OpenAI-compatible API |
 | **Docker Ready** | Single-command containerized deployment for headless scraping at scale |
 
-## Setup Guide
+## Quick Start
 
-### Prerequisites
-
-| Requirement | Version | Check |
-|---|---|---|
-| **Go** | 1.22+ | `go version` |
-| **Git** | any | `git --version` |
-
-> **Don't have Go?** Install from [go.dev/dl](https://go.dev/dl/) — download the installer for your OS, run it, and restart your terminal.
-
-### Step 1: Clone and Build
+### Option 1: Local Binary (IDE Integration)
 
 ```bash
-git clone https://github.com/yranjan06/GO-WebMcp.git
+# Clone and build
+git clone https://github.com/AiAutomatrix/GO-WebMcp.git
 cd GO-WebMcp
 make build
-```
-
-You should see:
-```
-go build -o webmcp cmd/server/*.go
- Built ./webmcp
-```
-
-### Step 2: Install Browser Dependencies
-
-Go-WebMCP uses Playwright to control a real Chromium browser. This step downloads the browser binary (~400MB, one-time):
-
-```bash
 make install-deps
 ```
 
-> **This can take 2-5 minutes** depending on your internet speed. It downloads Chromium, Firefox, and WebKit binaries. You only need to do this once.
-
-If this fails with a permission error, try:
-```bash
-sudo go run github.com/playwright-community/playwright-go/cmd/playwright@latest install --with-deps
-```
-
-### Step 3: Get a Free LLM API Key
-
-Go-WebMCP needs an LLM API key for AI-powered features (`click`, `type`, `extract`). Here are free options:
-
-| Provider | Free Tier | Speed | Setup Time |
-|---|---|---|---|
-| **Groq** | 30 requests/min | Fastest | 30 seconds |
-| **Google Gemini** | 15 requests/min | Smartest | 1 minute |
-| **OpenRouter** | Varies by model | Good | 1 minute |
-| **NVIDIA NIM** | 1000 free credits | Good | 2 minutes |
-| **Ollama** (local) | Unlimited | Depends on hardware | 5 minutes |
-
-**Recommended for beginners: [Groq](https://console.groq.com)** — fastest signup, most generous free limits.
-
-<details>
-<summary><strong>Groq (Recommended)</strong></summary>
-
-1. Go to [console.groq.com](https://console.groq.com) and sign up
-2. Create an API key from the dashboard
-3. Configure:
-```bash
-export AI_API_KEY="gsk_your-groq-key"
-export AI_BASE_URL="https://api.groq.com/openai/v1"
-export AI_MODEL="llama-3.3-70b-versatile"
-```
-</details>
-
-<details>
-<summary><strong>Google Gemini</strong></summary>
-
-1. Go to [aistudio.google.com](https://aistudio.google.com) and sign in with Google
-2. Click "Get API Key" and create a key
-3. Configure:
-```bash
-export AI_API_KEY="your-gemini-key"
-export AI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
-export AI_MODEL="gemini-2.0-flash"
-```
-</details>
-
-<details>
-<summary><strong>OpenRouter</strong></summary>
-
-1. Go to [openrouter.ai](https://openrouter.ai) and sign up
-2. Create an API key from Settings
-3. Configure:
-```bash
-export AI_API_KEY="sk-or-your-key"
-export AI_BASE_URL="https://openrouter.ai/api/v1"
-export AI_MODEL="meta-llama/llama-3.3-70b-instruct:free"
-```
-
-> **Note:** Free models on OpenRouter have strict rate limits. If you get `429 Too Many Requests` errors, wait a few seconds between actions or upgrade to a paid model.
-</details>
-
-<details>
-<summary><strong>NVIDIA NIM</strong></summary>
-
-1. Go to [build.nvidia.com](https://build.nvidia.com) and sign up
-2. Get an API key from "Get API Key" button
-3. Configure:
-```bash
-export AI_API_KEY="nvapi-your-key"
-export AI_BASE_URL="https://integrate.api.nvidia.com/v1"
-export AI_MODEL="meta/llama-3.1-8b-instruct"
-```
-</details>
-
-<details>
-<summary><strong>Ollama (100% Local, No Internet)</strong></summary>
-
-1. Download from [ollama.com](https://ollama.com)
-2. Pull a model: `ollama pull llama3.2`
-3. Configure:
-```bash
-export AI_API_KEY="ollama"
-export AI_BASE_URL="http://localhost:11434/v1"
-export AI_MODEL="llama3.2"
-```
-
-> Requires ~4GB RAM minimum. No API limits since it runs entirely on your machine.
-</details>
-
-### Step 4: Verify It Works
-
-Run a quick smoke test to confirm everything is set up:
-
-```bash
-./webmcp --help
-```
-
-You should see the Go-WebMCP banner with ASCII art and usage instructions. If AI features are configured correctly, the server log will show:
-```
-[AI] Using custom endpoint: https://... (model: ...)
-```
-
-### Step 5: Connect to Your IDE
-
-**VS Code / Cursor / Windsurf** — Add to `.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "go-webmcp": {
-      "type": "stdio",
-      "command": "/absolute/path/to/webmcp",
-      "env": {
-        "AI_API_KEY": "your-key-here",
-        "AI_BASE_URL": "https://api.groq.com/openai/v1",
-        "AI_MODEL": "llama-3.3-70b-versatile"
-      }
-    }
-  }
-}
-```
-
-> **Important:** Replace `/absolute/path/to/webmcp` with the actual full path to your `webmcp` binary. Find it with: `pwd` (in the GO-WebMcp directory).
-
-**Claude Desktop** — Add to `claude_desktop_config.json`:
+**Add to your IDE's MCP config** (`mcp.json` or `settings.json`):
 
 ```json
 {
@@ -195,41 +49,32 @@ You should see the Go-WebMCP banner with ASCII art and usage instructions. If AI
     "go-webmcp": {
       "command": "/absolute/path/to/webmcp",
       "env": {
-        "AI_API_KEY": "your-key-here"
+        "AI_API_KEY": "sk-your-key",
+        "AI_MODEL": "gpt-4o"
       }
     }
   }
 }
 ```
 
-### Docker Setup (Optional)
-
-If you prefer containerized deployment:
+### Option 2: Docker (Headless Orchestration)
 
 ```bash
-# Build and run with Docker
+# Build and run
 make docker
 docker run -p 8080:8080 \
-  -e AI_API_KEY="your-key" \
+  -e AI_API_KEY="sk-..." \
   -e BROWSER_HEADLESS="true" \
   go-webmcp --port=8080
-
-# Or with Docker Compose
-export AI_API_KEY="your-key"
-make docker-compose
 ```
 
-### Troubleshooting
+### Option 3: Docker Compose
 
-| Problem | Solution |
-|---|---|
-| `command not found: go` | Install Go from [go.dev/dl](https://go.dev/dl/) and restart terminal |
-| `make build` fails | Run `go mod download` first to fetch dependencies |
-| `Playwright install` hangs | Check internet connection; it downloads ~400MB of browser binaries |
-| `Browser engine failed to initialize` | Run `make install-deps` to install Playwright browsers |
-| `AI agent not available` | Set `AI_API_KEY` environment variable (see Step 3) |
-| `429 Too Many Requests` | Free API tier rate limit hit. Wait 10s and retry, or switch provider |
-| Browser window not showing | Set `BROWSER_HEADLESS=false` (default) or remove the env var |
+```bash
+# Set your key and run
+export AI_API_KEY="sk-..."
+make docker-compose
+```
 
 ## Environment Variables
 

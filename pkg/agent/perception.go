@@ -127,6 +127,8 @@ func (a *Agent) GetAccessibilityTree(page playwright.Page) (string, error) {
 }
 
 // cleanAccessibilityTree filters and compacts the AX tree to reduce token usage.
+// Aggressively prunes decorative, image, and deeply-nested elements to keep
+// the output under ~12K chars (fits within free-tier LLM token limits).
 func cleanAccessibilityTree(tree string) string {
 	lines := strings.Split(tree, "\n")
 	var cleaned []string
@@ -135,18 +137,49 @@ func cleanAccessibilityTree(tree string) string {
 		if trimmed == "" {
 			continue
 		}
+
 		lower := strings.ToLower(trimmed)
+
+		// Skip decorative / low-value ARIA nodes
 		if strings.Contains(lower, "presentation") && !strings.Contains(lower, "text") {
 			continue
 		}
+		// Skip image nodes (e-commerce pages have hundreds)
+		if strings.HasPrefix(strings.TrimLeft(lower, " -"), "img ") {
+			continue
+		}
+		// Skip generic separators and dividers
+		if strings.Contains(lower, "separator") {
+			continue
+		}
+		// Skip empty group/list items with no meaningful text
+		if (strings.HasSuffix(lower, "group:") || strings.HasSuffix(lower, "list:")) && len(trimmed) < 30 {
+			continue
+		}
+
+		// Measure indentation depth (each 2 spaces = 1 level)
+		indent := 0
+		for _, ch := range trimmed {
+			if ch == ' ' {
+				indent++
+			} else {
+				break
+			}
+		}
+		// Skip deeply nested elements (>6 levels) — usually noise
+		if indent > 12 {
+			continue
+		}
+
 		cleaned = append(cleaned, trimmed)
 	}
 
 	result := strings.Join(cleaned, "\n")
 
-	// Smart truncation: keep first 40K chars
-	if len(result) > 40000 {
-		result = result[:40000] + "\n...(truncated — page has more content)"
+	// Smart truncation: keep first 12K chars to fit free-tier LLM limits
+	// (~3K tokens for most models, well within Groq/OpenRouter/Gemini free tiers)
+	if len(result) > 12000 {
+		result = result[:12000] + "\n...(truncated — page has more content)"
 	}
 
 	return result
