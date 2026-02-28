@@ -141,25 +141,19 @@ make docker-compose
 
 ```mermaid
 graph TD
-    classDef client fill:#1a1a2e,stroke:#16213e,color:#e94560
-    classDef server fill:#0f3460,stroke:#533483,color:#fff
-    classDef agent fill:#533483,stroke:#e94560,color:#fff
-    classDef stealth fill:#e94560,stroke:#fff,color:#fff
-    classDef browser fill:#16213e,stroke:#0f3460,color:#e94560
+    A["AI Agent / IDE / Orchestrator"] -->|JSON-RPC| B["MCP Server"]
+    B --> C{"Action Router"}
 
-    A[AI Agent / IDE / Orchestrator] :::client -->|JSON-RPC| B(MCP Server) :::server
-    B --> C{Action Router} :::server
+    C -->|"click, type, extract"| D["Agentic Perception Layer"]
+    C -->|"browse, scroll, press_key"| E["Humanize Engine"]
 
-    C -->|"click, type, extract"| D[Agentic Perception Layer] :::agent
-    C -->|"browse, scroll, press_key"| E[Humanize Engine] :::stealth
+    D -->|"Accessibility Tree + LLM"| F["Playwright / Chromium"]
+    E -->|"Bezier Curves + Typing Delays"| F
 
-    D -->|Accessibility Tree + LLM| F[Playwright / Chromium] :::browser
-    E -->|"Bézier Curves + Typing Delays"| F
+    F -->|"Stealth JS Injection"| G["Target Website"]
 
-    F -->|Stealth JS Injection| G[Target Website] :::client
-
-    D -->|Structured JSON| B
-    B -->|Response| A
+    D -->|"Structured JSON"| B
+    B -->|"Response"| A
 ```
 
 ## Python Integration
