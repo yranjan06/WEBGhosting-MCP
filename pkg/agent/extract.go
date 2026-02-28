@@ -148,23 +148,59 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverr
 		log.Printf("\033[32m[AI] Native W3C WebMCP Support Detected!\033[0m Future routing will bypass DOM pruning to execute registered native tools.")
 	}
 
-	// 1. Prune the HTML
+	// 1. Prune the HTML — aggressive DOM cleaning to minimize token usage.
+	// Goal: reduce a 300K+ page to < 10K chars of meaningful text content.
 	js := `() => {
 		const clone = document.body.cloneNode(true);
+
+		// Phase 1: Remove entire elements that never contain extractable text
 		const removeSelectors = [
-			'script', 'style', 'noscript', 'iframe', 'svg', 'path', 
-			'symbol', 'defs', 'clipPath', 'g', 'header', 'footer', 
-			'nav', 'aside', 'form', 'button', 'input', 'select', 
-			'textarea', 'meta', 'link',
-			'[aria-hidden="true"]', '[data-test-id]', '.visually-hidden',
-			'.hidden', '[style*="display: none"]', 'img[src^="data:"]',
-			'img[loading="lazy"]', '[role="presentation"]', '[data-artdeco-is-hidden="true"]',
+			'script', 'style', 'noscript', 'iframe', 'svg', 'path',
+			'symbol', 'defs', 'clipPath', 'g', 'canvas', 'video', 'audio',
+			'header', 'footer', 'nav', 'aside',
+			'form', 'button', 'input', 'select', 'textarea', 'label',
+			'meta', 'link', 'source', 'picture',
+			'img',
+			'[aria-hidden="true"]', '[role="presentation"]', '[role="banner"]',
+			'[role="navigation"]', '[role="complementary"]', '[role="contentinfo"]',
+			'[data-testid]', '[data-test-id]', '[data-artdeco-is-hidden="true"]',
+			'[style*="display: none"]', '[style*="display:none"]',
+			'[style*="visibility: hidden"]', '[style*="visibility:hidden"]',
+			'.visually-hidden', '.sr-only', '.hidden', '.hide',
+			'.ad', '.ads', '.advertisement', '.sponsored',
+			'.cookie-banner', '.cookie-consent', '.modal', '.popup', '.overlay',
+			'.breadcrumb', '.pagination', '.sidebar', '.widget',
+			'.social-share', '.share-buttons',
 			'.global-nav', '.scaffold-layout__aside', '.artdeco-empty-state'
 		];
 		removeSelectors.forEach(sel => {
-			clone.querySelectorAll(sel).forEach(el => el.remove());
+			try { clone.querySelectorAll(sel).forEach(el => el.remove()); } catch(e) {}
 		});
-		return clone.innerHTML;
+
+		// Phase 2: Strip all inline styles and data-* attributes (massive bloat)
+		clone.querySelectorAll('*').forEach(el => {
+			el.removeAttribute('style');
+			el.removeAttribute('class');
+			el.removeAttribute('id');
+			[...el.attributes].forEach(attr => {
+				if (attr.name.startsWith('data-') || attr.name.startsWith('aria-')
+					|| attr.name === 'jsaction' || attr.name === 'jscontroller'
+					|| attr.name === 'jsname' || attr.name === 'jsmodel') {
+					el.removeAttribute(attr.name);
+				}
+			});
+		});
+
+		// Phase 3: Remove empty containers (divs/spans with no text content)
+		clone.querySelectorAll('div, span, section, article').forEach(el => {
+			if (el.textContent.trim().length === 0) el.remove();
+		});
+
+		// Phase 4: Collapse whitespace in the final output
+		return clone.innerHTML
+			.replace(/\s{2,}/g, ' ')
+			.replace(/>\s+</g, '><')
+			.trim();
 	}`
 
 	log.Printf("[AI] → Pruning HTML DOM for extraction...")
@@ -239,43 +275,32 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 	}
 
 	var chunks []string
+	const maxChunkSize = 2000
 
 	// STEP 2: Go-level Document Chunking
 	if marker != "" && len(mdText) > 5000 {
 		log.Printf("[AI] → Step 2: Splitting document by logical boundary marker: '%s'", marker)
 		rawPieces := strings.Split(mdText, marker)
-		// Group pieces into chunks of roughly 400 chars to optimize parallel processing
-		currentChunk := ""
+
 		for _, piece := range rawPieces {
-			if len(currentChunk)+len(piece) > 400 {
-				chunks = append(chunks, currentChunk)
-				currentChunk = piece
-			} else {
-				currentChunk += marker + piece
+			piece = strings.TrimSpace(piece)
+			if piece == "" {
+				continue
 			}
-		}
-		if currentChunk != "" {
-			chunks = append(chunks, currentChunk)
+			// If this piece is small enough, add it directly
+			if len(piece) <= maxChunkSize {
+				chunks = append(chunks, piece)
+			} else {
+				// Sub-chunk oversized pieces by newlines
+				subChunks := splitByLines(piece, maxChunkSize)
+				chunks = append(chunks, subChunks...)
+			}
 		}
 		log.Printf("[AI] Document logically split into %d chunks.", len(chunks))
 	} else {
 		// Hard Fallback Splitting (if no marker found or API timed out)
-		log.Printf("[AI] → Step 2: Applying programmatic fallback chunking (max 2000 chars/chunk)...")
-		chunkSize := 2000
-
-		lines := strings.Split(mdText, "\n")
-		currentChunk := ""
-		for _, line := range lines {
-			if len(currentChunk)+len(line) > chunkSize && currentChunk != "" {
-				chunks = append(chunks, currentChunk)
-				currentChunk = line + "\n"
-			} else {
-				currentChunk += line + "\n"
-			}
-		}
-		if currentChunk != "" {
-			chunks = append(chunks, currentChunk)
-		}
+		log.Printf("[AI] → Step 2: Applying programmatic fallback chunking (max %d chars/chunk)...", maxChunkSize)
+		chunks = splitByLines(mdText, maxChunkSize)
 		log.Printf("[AI] Document programmatically split gently into %d chunks.", len(chunks))
 	}
 
@@ -295,7 +320,8 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 	}
 
 	// Semaphore to limit concurrent LLM API calls and prevent 429 Too Many Requests limits
-	concurrencyLimit := 5
+	// Keep low (3) to stay within free-tier rate limits
+	concurrencyLimit := 3
 	sem := make(chan struct{}, concurrencyLimit)
 
 	for i, chunkText := range chunks {
@@ -350,4 +376,24 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 	finalMegaJSON := string(finalMegaBytes)
 
 	return finalMegaJSON, nil
+}
+
+// splitByLines splits text into chunks of at most maxSize characters,
+// breaking at newline boundaries to preserve readability.
+func splitByLines(text string, maxSize int) []string {
+	var chunks []string
+	lines := strings.Split(text, "\n")
+	currentChunk := ""
+	for _, line := range lines {
+		if len(currentChunk)+len(line)+1 > maxSize && currentChunk != "" {
+			chunks = append(chunks, strings.TrimSpace(currentChunk))
+			currentChunk = line + "\n"
+		} else {
+			currentChunk += line + "\n"
+		}
+	}
+	if strings.TrimSpace(currentChunk) != "" {
+		chunks = append(chunks, strings.TrimSpace(currentChunk))
+	}
+	return chunks
 }
