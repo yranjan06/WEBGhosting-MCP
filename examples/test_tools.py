@@ -1,154 +1,96 @@
-import subprocess
-import json
-import sys
-import time
-import os
+#!/usr/bin/env python3
+"""
+Go-WebMCP — Core Tool Test Suite
+Tests: browse, stealth, type, console logs, accessibility tree, dialog handling
+Uses the local demo/index.html test page.
+"""
 
-# Colors
-GREEN = "\033[32m"
-RED = "\033[31m"
-YELLOW = "\033[33m"
-CYAN = "\033[36m"
-RESET = "\033[0m"
+import sys, os, json
+sys.path.insert(0, '.')
+from examples.client import *
 
-class GoWebMCPClient:
-    def __init__(self):
-        env = os.environ.copy()
-        env["AI_API_KEY"] = "***REDACTED_KEY***"
-        env["AI_BASE_URL"] = "https://integrate.api.nvidia.com/v1"
-        env["AI_MODEL"] = "meta/llama-3.1-8b-instruct"
-            
-        self.process = subprocess.Popen(
-            ['./webmcp'],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=sys.stderr,
-            text=True,
-            env=env
-        )
-        self.req_id = 1
-        self._initialize()
+client = GoWebMCPClient()
 
-    def _initialize(self):
-        init_msg = self._make_rpc_msg("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "e2e-orchestrator", "version": "1.0"}
-        })
-        self.process.stdin.write(init_msg + '\n')
-        self.process.stdin.flush()
-        
-        while True:
-            line = self.process.stdout.readline()
-            if not line: break
-            try:
-                if "jsonrpc" in json.loads(line): break
-            except: pass
-            
-        self.process.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + '\n')
-        self.process.stdin.flush()
-        print(f"{GREEN}[System] Go-WebMCP initialized successfully.{RESET}")
+demo_url = f"file://{os.getcwd()}/examples/demo/index.html"
+passed = 0
+failed = 0
 
-    def _make_rpc_msg(self, method, params=None):
-        msg = {"jsonrpc": "2.0", "method": method, "id": self.req_id}
-        if params is not None:
-            msg["params"] = params
-        self.req_id += 1
-        return json.dumps(msg)
+def check(name, condition, detail=""):
+    global passed, failed
+    if condition:
+        passed += 1
+        print(f"  {GREEN}PASS{RESET} {name}")
+    else:
+        failed += 1
+        print(f"  {RED}FAIL{RESET} {name} {detail}")
 
-    def call_tool(self, name, args):
-        msg = self._make_rpc_msg("tools/call", {"name": name, "arguments": args})
-        self.process.stdin.write(msg + '\n')
-        self.process.stdin.flush()
-        
-        while True:
-            line = self.process.stdout.readline()
-            if not line: return None
-            try:
-                resp = json.loads(line)
-                if "error" in resp:
-                    return f"ERROR: {resp['error']}"
-                if "result" in resp:
-                    return resp["result"]["content"][0]["text"]
-            except json.JSONDecodeError:
-                pass
+try:
+    print(f"\n{CYAN}{'='*50}\n  Go-WebMCP Core Tool Test Suite\n{'='*50}{RESET}\n")
 
+    # TEST 1: Browse + Stealth
+    print(f"{BOLD}Browse + Stealth{RESET}")
+    res = client.call("browse", {"url": demo_url})
+    check("browse", res and "Successfully" in res)
 
-def run_tool_tests():
-    print(f"\n{CYAN}{'='*50}")
-    print(f"  Starting Comprehensive Tool Coverage Tests")
-    print(f"{'='*50}{RESET}\n")
+    js_res = client.call("execute_js", {"script": "document.getElementById('stealth-result').innerText"})
+    check("stealth (webdriver=false)", js_res and "PASS" in js_res, js_res)
 
-    client = GoWebMCPClient()
-    
-    try:
-        # TEST 1: Dialog Handling & JS Execution
-        print(f"\n{YELLOW}--- TEST 1: JS Execution & Dialog Handling ---{RESET}")
-        print("Configuring dialogs to auto-accept...")
-        client.call_tool("configure_dialog", {"action": "accept"})
-        
-        # Navigate to a blank page to test JS safely
-        client.call_tool("browse", {"url": "about:blank"})
-        
-        print("Executing Javascript to trigger an Alert...")
-        js_res = client.call_tool("execute_js", {"script": "alert('Hello WebMCP Test!'); 'Dialog Triggered & JS Executed';" })
-        print(f"{GREEN}  -> JS Return Output: {js_res}{RESET}")
+    # TEST 2: AI Typing
+    print(f"\n{BOLD}AI Typing{RESET}")
+    type_res = client.call("type", {"prompt": "Input Field", "text": "Hello WebMCP"})
+    if type_res and "ERROR" not in type_res:
+        val = client.call("execute_js", {"script": "document.getElementById('test-input').value"})
+        check("type", val and "Hello WebMCP" in val, val)
+    else:
+        check("type (needs AI_API_KEY)", False, type_res)
 
+    # TEST 3: Console Logs
+    print(f"\n{BOLD}Console Logs{RESET}")
+    client.call("execute_js", {"script": "console.error('Test Simulated Error')"})
+    logs = client.call("get_console_logs", {})
+    check("console log capture", logs and "Test Simulated Error" in logs)
 
-        # TEST 2: Multi-Tab Capabilities
-        print(f"\n{YELLOW}--- TEST 2: Multi-Tab Capabilities ---{RESET}")
-        print("Opening Tab 2...")
-        client.call_tool("open_tab", {})
-        client.call_tool("browse", {"url": "https://example.com"})
-        
-        print("Opening Tab 3...")
-        client.call_tool("open_tab", {})
-        client.call_tool("browse", {"url": "https://httpbin.org/get"})
-        
-        print("Listing Tabs...")
-        tabs_res = client.call_tool("list_tabs", {})
-        print(f"{GREEN}  -> Open Tabs:\n{tabs_res}{RESET}")
-        
-        print("Switching back to Tab 1 (index 0)...")
-        client.call_tool("switch_tab", {"index": 0})
-        
-        print("Closing Tabs 1 and 2 (indices 1 & 2)...")
-        client.call_tool("close_tab", {"index": 2})
-        client.call_tool("close_tab", {"index": 1})
-        
-        tabs_res_final = client.call_tool("list_tabs", {})
-        print(f"{GREEN}  -> Tabs Remaining:\n{tabs_res_final}{RESET}")
+    # TEST 4: Accessibility Tree
+    print(f"\n{BOLD}Accessibility Tree{RESET}")
+    tree = client.call("get_accessibility_tree", {})
+    check("a11y tree", tree and "Aria Label Button" in tree, f"len={len(tree) if tree else 0}")
 
+    # TEST 5: Dialog Handling
+    print(f"\n{BOLD}Dialog Handling{RESET}")
+    client.call("configure_dialog", {"action": "dismiss"})
+    client.call("execute_js", {"script": "document.querySelector('button[onclick=\"triggerConfirm()\"]').click()"})
+    dialog_res = client.call("execute_js", {"script": "document.getElementById('dialog-result').innerText"})
+    check("dialog dismiss", dialog_res and "false" in dialog_res, dialog_res)
 
-        # TEST 3: Batch Form Fill Tool (Testing without LLM Click for exact validation)
-        print(f"\n{YELLOW}--- TEST 3: Batch Form Fill (the-internet.herokuapp.com/login) ---{RESET}")
-        print("Navigating to test login page...")
-        client.call_tool("browse", {"url": "https://the-internet.herokuapp.com/login"})
-        client.call_tool("wait_for_load_state", {"state": "domcontentloaded"})
-        
-        print("Batch filling credentials...")
-        fields = [
-            {"selector": "#username", "value": "tomsmith", "type": "textbox"},
-            {"selector": "#password", "value": "SuperSecretPassword!", "type": "textbox"}
-        ]
-        fill_res = client.call_tool("fill_form", {"fields": fields})
-        print(f"{GREEN}  -> Form Fill Output: {fill_res}{RESET}")
-        
-        print("Executing JS to click native submit button... (mimicking programmatic automation)")
-        client.call_tool("execute_js", {"script": "document.querySelector('button[type=\"submit\"]').click();"})
-        client.call_tool("wait_for_load_state", {"state": "networkidle"})
-        time.sleep(3) # Give page strict time to navigate to /secure
-        
-        print("Extracting flash message overlay via JS to confirm successful simulated login...")
-        login_res = client.call_tool("execute_js", {"script": "document.getElementById('flash').textContent.trim()"})
-        print(f"{GREEN}  -> Login Banner Success Test: {login_res}{RESET}")
+    # TEST 6: Multi-Tab
+    print(f"\n{BOLD}Multi-Tab{RESET}")
+    client.call("open_tab", {})
+    client.call("browse", {"url": "https://example.com"})
+    tabs = client.call("list_tabs", {})
+    check("multi-tab", tabs and "example.com" in tabs)
+    client.call("close_tab", {"index": 1})
 
-        print(f"\n{CYAN}[Success] All Comprehensive Tool Tests Passed!{RESET}")
+    # TEST 7: Key Press
+    print(f"\n{BOLD}Key Press{RESET}")
+    res = client.call("press_key", {"key": "Tab"})
+    check("press_key", res and "Pressed" in res)
 
-    except Exception as e:
-        print(f"\n{RED}[Fatal Error] {e}{RESET}")
-    finally:
-        client.process.terminate()
+    # TEST 8: Status
+    print(f"\n{BOLD}Status{RESET}")
+    status = client.call("get_status", {})
+    check("get_status", status and "initialized" in status)
 
-if __name__ == "__main__":
-    run_tool_tests()
+    # Summary
+    total = passed + failed
+    print(f"\n{CYAN}{'='*50}{RESET}")
+    print(f"  Results: {GREEN}{passed}/{total} passed{RESET}", end="")
+    if failed:
+        print(f", {RED}{failed} failed{RESET}")
+    else:
+        print()
+    print(f"{CYAN}{'='*50}{RESET}\n")
+
+except Exception as e:
+    print(f"\n{RED}Error: {e}{RESET}")
+finally:
+    client.close()

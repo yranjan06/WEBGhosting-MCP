@@ -1,206 +1,86 @@
 #!/usr/bin/env python3
 """
-Go-WebMCP End-to-End Demo
-Demonstrates: Stealth Browse, AI Click, Extraction, Multi-Tab
-Target: Hacker News (lightweight, no anti-bot)
+Go-WebMCP — Hacker News E2E Demo
+Tests: stealth, browse, accessibility tree, AI click, extraction, multi-tab
 """
 
-import subprocess
-import json
-import sys
-import os
-import time
+import sys, time, json
+sys.path.insert(0, '.')
+from examples.client import *
 
-# Colors
-GREEN = "\033[32m"
-RED = "\033[31m"
-YELLOW = "\033[33m"
-CYAN = "\033[36m"
-DIM = "\033[2m"
-RESET = "\033[0m"
+client = GoWebMCPClient()
 
-class GoWebMCPClient:
-    def __init__(self):
-        env = os.environ.copy()
-        env["AI_API_KEY"] = os.getenv("AI_API_KEY", "")
-        env["AI_BASE_URL"] = os.getenv("AI_BASE_URL", "https://openrouter.ai/api/v1")
-        env["AI_MODEL"] = os.getenv("AI_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+try:
+    print(f"\n{CYAN}{'='*55}\n  Go-WebMCP E2E Demo — Hacker News\n{'='*55}{RESET}")
 
-        if not env["AI_API_KEY"]:
-            print(f"{RED}ERROR: AI_API_KEY not set!{RESET}")
-            print("Run: export AI_API_KEY='sk-or-...'")
-            sys.exit(1)
+    # Phase 1: Stealth Navigation
+    print(f"\n{BOLD}Phase 1: Stealth Navigation{RESET}")
+    client.call("browse", {"url": "https://news.ycombinator.com"})
+    print(f"  {GREEN}Navigated to Hacker News{RESET}")
 
-        self.process = subprocess.Popen(
-            ['./webmcp'],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=sys.stderr,  # Let server logs flow to terminal
-            text=True,
-            env=env
-        )
-        self.req_id = 1
-        self._initialize()
+    # Phase 2: Stealth Verification
+    print(f"\n{BOLD}Phase 2: Stealth Verification{RESET}")
+    res = client.call("execute_js", {
+        "script": "JSON.stringify({webdriver: navigator.webdriver, plugins: navigator.plugins.length, languages: navigator.languages}, null, 2)"
+    })
+    print(f"  {GREEN}{res}{RESET}")
 
-    def _initialize(self):
-        msg = self._rpc("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "e2e-demo", "version": "1.0"}
-        })
-        self.process.stdin.write(msg + '\n')
-        self.process.stdin.flush()
+    # Phase 3: Server Status
+    print(f"\n{BOLD}Phase 3: Server Status{RESET}")
+    status = client.call("get_status", {})
+    print(f"  {GREEN}{status}{RESET}")
 
-        # Wait for init response
-        while True:
-            line = self.process.stdout.readline()
-            if not line:
-                break
-            try:
-                if "jsonrpc" in json.loads(line):
-                    break
-            except:
-                pass
+    # Phase 4: Accessibility Tree
+    print(f"\n{BOLD}Phase 4: Accessibility Tree{RESET}")
+    tree = client.call("get_accessibility_tree", {})
+    if tree:
+        lines = tree.strip().split('\n')
+        print(f"  {GREEN}{len(lines)} ARIA nodes. First 5:{RESET}")
+        for l in lines[:5]:
+            print(f"   {DIM}{l}{RESET}")
 
-        # Send initialized notification
-        self.process.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + '\n')
-        self.process.stdin.flush()
-        print(f"{GREEN}[OK] Go-WebMCP server initialized{RESET}")
+    # Phase 5: AI Click
+    print(f"\n{BOLD}Phase 5: AI Click{RESET}")
+    res = client.call("click", {"prompt": "More link at the bottom"})
+    print(f"  {GREEN}{res}{RESET}")
 
-    def _rpc(self, method, params=None):
-        msg = {"jsonrpc": "2.0", "method": method, "id": self.req_id}
-        if params is not None:
-            msg["params"] = params
-        self.req_id += 1
-        return json.dumps(msg)
+    # Phase 6: Extraction
+    print(f"\n{BOLD}Phase 6: Map-Reduce Extraction{RESET}")
+    schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "url": {"type": "string"},
+                "points": {"type": "string"},
+                "author": {"type": "string"}
+            }
+        },
+        "description": "Extract all Hacker News story titles with URL, points, author"
+    }
+    res = client.call("extract", {"schema": schema})
+    if res:
+        try:
+            data = json.loads(res)
+            print(f"  {GREEN}Extracted {len(data)} stories{RESET}")
+            for s in data[:3]:
+                print(f"    - {s.get('title', '?')[:50]} ({s.get('points', '?')} pts)")
+        except:
+            print(f"  {YELLOW}{res[:200]}{RESET}")
 
-    def call_tool(self, name, args):
-        msg = self._rpc("tools/call", {"name": name, "arguments": args})
-        self.process.stdin.write(msg + '\n')
-        self.process.stdin.flush()
+    # Phase 7: Multi-Tab
+    print(f"\n{BOLD}Phase 7: Multi-Tab{RESET}")
+    client.call("open_tab", {})
+    client.call("browse", {"url": "https://example.com"})
+    tabs = client.call("list_tabs", {})
+    print(f"  {GREEN}{tabs}{RESET}")
+    client.call("close_tab", {"index": 1})
 
-        while True:
-            line = self.process.stdout.readline()
-            if not line:
-                return None
-            try:
-                resp = json.loads(line)
-                if "error" in resp:
-                    return f"ERROR: {resp['error']}"
-                if "result" in resp:
-                    return resp["result"]["content"][0]["text"]
-            except json.JSONDecodeError:
-                pass
+    print(f"\n{GREEN}{'='*55}\n  ALL 7 PHASES COMPLETE\n{'='*55}{RESET}\n")
 
-    def close(self):
-        self.process.terminate()
-        self.process.wait(timeout=5)
-
-
-def separator(phase, title):
-    print(f"\n{CYAN}{'='*55}")
-    print(f"  Phase {phase}: {title}")
-    print(f"{'='*55}{RESET}")
-
-
-def main():
-    print(f"\n{CYAN}{'='*55}")
-    print(f"  Go-WebMCP -- End-to-End Demo")
-    print(f"  Target: Hacker News + Stealth Verification")
-    print(f"{'='*55}{RESET}")
-
-    client = GoWebMCPClient()
-
-    try:
-        # ─── Phase 1: Stealth Navigation ───
-        separator(1, "Stealth Navigation")
-        print(">> browse(https://news.ycombinator.com)")
-        res = client.call_tool("browse", {"url": "https://news.ycombinator.com"})
-        print(f"{GREEN}<< {res}{RESET}")
-        time.sleep(2)
-
-        # ─── Phase 2: Stealth Proof ───
-        separator(2, "Stealth Verification")
-        print(">> Checking navigator.webdriver and fingerprint...")
-        res = client.call_tool("execute_js", {
-            "script": "JSON.stringify({webdriver: navigator.webdriver, plugins: navigator.plugins.length, languages: navigator.languages}, null, 2)"
-        })
-        print(f"{GREEN}<< {res}{RESET}")
-
-        # ─── Phase 3: Status Check ───
-        separator(3, "Server Status")
-        print(">> get_status()")
-        res = client.call_tool("get_status", {})
-        print(f"{GREEN}<< {res}{RESET}")
-
-        # ─── Phase 4: Accessibility Tree ───
-        separator(4, "Accessibility Tree Snapshot")
-        print(">> get_accessibility_tree()")
-        res = client.call_tool("get_accessibility_tree", {})
-        if res:
-            lines = res.strip().split("\n")
-            print(f"{GREEN}<< {len(lines)} ARIA nodes captured. First 5:{RESET}")
-            for l in lines[:5]:
-                print(f"   {DIM}{l}{RESET}")
-
-        # ─── Phase 5: AI-Powered Click ───
-        separator(5, "AI Click (Natural Language)")
-        print(">> click('More link at the bottom')")
-        res = client.call_tool("click", {"prompt": "More link at the bottom"})
-        print(f"{GREEN}<< {res}{RESET}")
-        time.sleep(2)
-
-        # ─── Phase 6: Structured Extraction ───
-        separator(6, "Map-Reduce Structured Extraction")
-        schema = {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "points": {"type": "string"},
-                    "author": {"type": "string"}
-                }
-            },
-            "description": "Extract the title, points, and author of every story on the page"
-        }
-        print(f">> extract(schema=stories)")
-        res = client.call_tool("extract", {"schema": schema})
-        if res:
-            try:
-                data = json.loads(res)
-                print(f"{GREEN}<< Extracted {len(data)} stories! First 3:{RESET}")
-                for i, item in enumerate(data[:3]):
-                    print(f"   [{i+1}] {item.get('title', '?')[:55]}")
-                    print(f"       Points: {item.get('points', '?')} | Author: {item.get('author', '?')}")
-            except:
-                print(f"{YELLOW}<< Raw: {res[:200]}...{RESET}")
-
-        # ─── Phase 7: Multi-Tab ───
-        separator(7, "Multi-Tab Management")
-        print(">> open_tab() + browse(example.com)")
-        client.call_tool("open_tab", {})
-        client.call_tool("browse", {"url": "https://example.com"})
-        
-        print(">> list_tabs()")
-        res = client.call_tool("list_tabs", {})
-        print(f"{GREEN}<< {res}{RESET}")
-
-        print(">> Closing tab 1, switching back...")
-        client.call_tool("close_tab", {"index": 1})
-
-        # ─── Done ───
-        print(f"\n{GREEN}{'='*55}")
-        print(f"  ALL 7 PHASES COMPLETE")
-        print(f"{'='*55}{RESET}\n")
-
-    except Exception as e:
-        print(f"\n{RED}EXCEPTION: {e}{RESET}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        client.close()
-
-
-if __name__ == "__main__":
-    main()
+except Exception as e:
+    print(f"\n{RED}EXCEPTION: {e}{RESET}")
+    import traceback; traceback.print_exc()
+finally:
+    client.close()
