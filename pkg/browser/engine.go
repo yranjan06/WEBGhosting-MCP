@@ -1,6 +1,7 @@
 package browser
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -783,4 +784,127 @@ func base64Encode(data []byte) string {
 		}
 	}
 	return string(result)
+}
+
+// ─── Page Context ───
+
+// PageContext holds structured metadata about the current page for LLM agent planning.
+type PageContext struct {
+	URL             string   `json:"url"`
+	Title           string   `json:"title"`
+	PageType        string   `json:"page_type"`
+	TextLength      int      `json:"text_length"`
+	LinkCount       int      `json:"link_count"`
+	ImageCount      int      `json:"image_count"`
+	FormCount       int      `json:"form_count"`
+	ButtonCount     int      `json:"button_count"`
+	InputCount      int      `json:"input_count"`
+	HasSearch       bool     `json:"has_search"`
+	HasLogin        bool     `json:"has_login"`
+	HasReviews      bool     `json:"has_reviews"`
+	HasPagination   bool     `json:"has_pagination"`
+	HasVideo        bool     `json:"has_video"`
+	HasCart         bool     `json:"has_cart"`
+	MainHeadings    []string `json:"main_headings"`
+	MetaDescription string   `json:"meta_description"`
+	Summary         string   `json:"summary"`
+}
+
+// GetPageContext analyzes the current page and returns structured context.
+// This is a zero-LLM, pure JS analysis that helps LLM agents plan their next steps.
+func (e *Engine) GetPageContext() (*PageContext, error) {
+	if err := e.EnsureInitialized(); err != nil {
+		return nil, err
+	}
+	page := e.activePage()
+	if page == nil {
+		return nil, fmt.Errorf("no active tab")
+	}
+
+	// Run comprehensive page analysis in one JS evaluation
+	script := `() => {
+		const body = document.body;
+		const text = body ? body.innerText : '';
+
+		// Count elements
+		const links = document.querySelectorAll('a[href]').length;
+		const images = document.querySelectorAll('img').length;
+		const forms = document.querySelectorAll('form').length;
+		const buttons = document.querySelectorAll('button, [role="button"], input[type="submit"]').length;
+		const inputs = document.querySelectorAll('input, textarea, select').length;
+
+		// Detect features
+		const lowerText = text.toLowerCase();
+		const lowerHTML = body ? body.innerHTML.toLowerCase() : '';
+
+		const hasSearch = !!document.querySelector('input[type="search"], [role="search"], input[placeholder*="search" i], input[name*="search" i], input[aria-label*="search" i]');
+		const hasLogin = !!(lowerHTML.match(/sign.?in|log.?in|password/) && document.querySelector('input[type="password"]'));
+		const hasReviews = !!(lowerHTML.match(/review|rating|stars|customer.?feedback/) && (lowerHTML.includes('★') || lowerHTML.includes('star') || document.querySelector('[class*="review"], [class*="rating"], [data-hook*="review"]')));
+		const hasPagination = !!document.querySelector('[class*="pagination"], [class*="pager"], nav[aria-label*="pagination" i], a[aria-label*="next" i], .next, .prev');
+		const hasVideo = !!document.querySelector('video, iframe[src*="youtube"], iframe[src*="vimeo"]');
+		const hasCart = !!(lowerHTML.match(/add.?to.?cart|buy.?now|add.?to.?bag|checkout/));
+
+		// Page type detection
+		let pageType = 'unknown';
+		const url = window.location.href.toLowerCase();
+		const title = document.title.toLowerCase();
+
+		if (hasLogin && inputs > 2) pageType = 'login_page';
+		else if (url.includes('/search') || url.includes('?q=') || url.includes('?k=') || url.includes('?query=') || title.includes('search')) pageType = 'search_results';
+		else if (hasCart && hasReviews) pageType = 'product_page';
+		else if (hasReviews && !hasCart) pageType = 'review_page';
+		else if (url.match(/\/(article|blog|post|news)\//)) pageType = 'article';
+		else if (document.querySelector('article') && text.length > 2000) pageType = 'article';
+		else if (url === 'about:blank' || url.startsWith('chrome://')) pageType = 'blank';
+		else if (forms > 0 && inputs > 3) pageType = 'form_page';
+		else if (links > 20 && images > 5) pageType = 'listing_page';
+		else pageType = 'general';
+
+		// Get main headings
+		const headings = [];
+		document.querySelectorAll('h1, h2').forEach((h, i) => {
+			if (i < 5 && h.textContent.trim()) headings.push(h.textContent.trim().substring(0, 80));
+		});
+
+		// Meta description
+		const metaDesc = (document.querySelector('meta[name="description"]') || {}).content || '';
+
+		// Brief summary (first 200 chars of visible text, cleaned)
+		const summary = text.replace(/\s+/g, ' ').trim().substring(0, 200);
+
+		return JSON.stringify({
+			url: window.location.href,
+			title: document.title,
+			page_type: pageType,
+			text_length: text.length,
+			link_count: links,
+			image_count: images,
+			form_count: forms,
+			button_count: buttons,
+			input_count: inputs,
+			has_search: hasSearch,
+			has_login: hasLogin,
+			has_reviews: hasReviews,
+			has_pagination: hasPagination,
+			has_video: hasVideo,
+			has_cart: hasCart,
+			main_headings: headings,
+			meta_description: metaDesc.substring(0, 160),
+			summary: summary
+		});
+	}`
+
+	result, err := page.Evaluate(script)
+	if err != nil {
+		return nil, fmt.Errorf("page context analysis failed: %w", err)
+	}
+
+	var ctx PageContext
+	if str, ok := result.(string); ok {
+		if err := json.Unmarshal([]byte(str), &ctx); err != nil {
+			return nil, fmt.Errorf("failed to parse page context: %w", err)
+		}
+	}
+
+	return &ctx, nil
 }

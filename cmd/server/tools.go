@@ -541,6 +541,19 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(content)), nil
 	}))
 
+	// ─── Page Context ───
+	must(server.RegisterTool("get_page_context", "Analyze the current page and return structured context: page type (search_results, product_page, login_page, article, form_page, listing_page, etc), interactive element counts, detected features (has_search, has_login, has_reviews, has_pagination, has_cart, has_video), main headings, and a brief text summary. This is a zero-cost instant analysis (no LLM used) — call it after every navigation to plan your next action intelligently.", func(args GetStatusArgs) (*mcp_golang.ToolResponse, error) {
+		log.Printf("%s[CONTEXT]%s Analyzing page...", ColorBlue, ColorReset)
+		ctx, err := engine.GetPageContext()
+		if err != nil {
+			return nil, fmt.Errorf("page context failed: %v", err)
+		}
+		engine.SetLastAction("get_page_context")
+		ctxJSON, _ := json.MarshalIndent(ctx, "", "  ")
+		log.Printf("%s[CONTEXT]%s Page type: %s | %d links | reviews:%v | search:%v", ColorGreen, ColorReset, ctx.PageType, ctx.LinkCount, ctx.HasReviews, ctx.HasSearch)
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(string(ctxJSON))), nil
+	}))
+
 	// ─── Screenshot ───
 	must(server.RegisterTool("screenshot", "Capture the current page viewport as base64 PNG. Useful for visual debugging and validation.", func(args ScreenshotArgs) (*mcp_golang.ToolResponse, error) {
 		log.Printf("%s[SCREENSHOT]%s Capturing viewport...", ColorBlue, ColorReset)
