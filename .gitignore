@@ -38,3 +38,4 @@ docker-compose.override.yml
 
 # Tool versions
 .tool-versions
+tmp_webmcp
