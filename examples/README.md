@@ -1,43 +1,80 @@
-# Examples
+# Go-WebMCP Examples
 
-All example scripts use the shared `client.py` module. Set your API credentials as
-environment variables before running any demo:
+Ready-to-run scripts demonstrating Go-WebMCP's capabilities. All scripts use the shared [`client.py`](client.py) MCP client.
 
-```bash
-export AI_API_KEY="your-key"
-export AI_BASE_URL="https://api.groq.com/openai/v1"   # or NVIDIA, OpenRouter, etc.
-export AI_MODEL="llama-3.1-8b-instant"
-```
-
-## Quick Start
+## Prerequisites
 
 ```bash
+# Build the server
+cd GO-WebMcp
 make build
-python3 examples/e2e_demo.py          # Hacker News (no auth needed)
+
+# Set your API key (required for AI-powered tools)
+export AI_API_KEY="your-key"
+export AI_BASE_URL="https://api.groq.com/openai/v1"  # or OpenAI, Ollama, etc
+export AI_MODEL="llama-3.1-8b-instant"
 ```
 
 ## Scripts
 
-| Script | Target | Auth | What it tests |
-|--------|--------|------|---------------|
-| `test_tools.py` | `demo/index.html` | No | Core tool suite: browse, stealth, type, console, a11y, dialogs, multi-tab |
-| `test_demo.py` | `demo/index.html` | No | Quick stealth + fingerprint validation |
-| `e2e_demo.py` | Hacker News | No | Full 7-phase demo: stealth, a11y, AI click, extraction, multi-tab |
-| `e2e_amazon_flipkart.py` | Amazon + Flipkart | No | Price comparison, Map-Reduce extraction, multi-tab |
-| `e2e_naukri.py` | Naukri | No | Job search extraction |
-| `e2e_reddit.py` | Reddit | No | AI click on post title + comment extraction |
-| `e2e_linkedin.py` | LinkedIn | Yes (Google SSO) | Job extraction behind auth wall |
-| `e2e_twitter.py` | X.com | Yes (Twitter login) | Infinite scroll + tweet extraction |
+| Script | AI Key Required? | Description |
+|---|---|---|
+| **[test_page_context.py](test_page_context.py)** | ❌ No | Tests page detection on 10 major websites — great first script to run |
+| **[e2e_amazon_flipkart.py](e2e_amazon_flipkart.py)** | ✅ Yes | Smart multi-step demo: Amazon vs Flipkart iPhone 15 comparison |
+| **[e2e_demo.py](e2e_demo.py)** | ✅ Yes | Basic navigation + extraction demo |
+| **[e2e_linkedin.py](e2e_linkedin.py)** | ✅ Yes | LinkedIn profile/job extraction |
+| **[e2e_reddit.py](e2e_reddit.py)** | ✅ Yes | Reddit subreddit scraping |
+| **[e2e_twitter.py](e2e_twitter.py)** | ✅ Yes | Twitter/X feed extraction |
+| **[e2e_naukri.py](e2e_naukri.py)** | ✅ Yes | Job portal extraction |
+| **[test_tools.py](test_tools.py)** | ✅ Yes | Tool integration tests |
+| **[test_demo.py](test_demo.py)** | ✅ Yes | Quick demo test |
 
-## Shared Client
+## Quick Start
 
-`client.py` provides `GoWebMCPClient` — a reusable MCP stdio client:
+```bash
+# Run without API key (page context test)
+python3 examples/test_page_context.py
+
+# Run with API key
+export AI_API_KEY="gsk_..."
+export AI_BASE_URL="https://api.groq.com/openai/v1"
+export AI_MODEL="llama-3.1-8b-instant"
+python3 examples/e2e_amazon_flipkart.py
+```
+
+## Shared Client (`client.py`)
+
+All scripts use the `GoWebMCPClient` class:
 
 ```python
-from examples.client import *
+from examples.client import GoWebMCPClient
 
 client = GoWebMCPClient()
 client.call("browse", {"url": "https://example.com"})
-result = client.call("extract", {"schema": {...}})
+data = client.call("extract", {"schema": {...}})
 client.close()
 ```
+
+## Writing Your Own Script
+
+1. Copy the template from [CONTRIBUTING.md](../CONTRIBUTING.md#-adding-example-scripts)
+2. Use `sys.path.insert(0, '.')` and `from examples.client import *`
+3. Run from the project root: `python3 examples/your_script.py`
+4. Submit a PR!
+
+## Page Types Detected
+
+The `get_page_context` tool can identify these page types (zero LLM cost):
+
+| Page Type | Examples |
+|---|---|
+| `search_results` | Google, Bing, DuckDuckGo |
+| `product_page` | Amazon, Flipkart product pages |
+| `social_feed` | Reddit, Twitter, Facebook |
+| `video_platform` | YouTube |
+| `code_repository` | GitHub |
+| `article` | Wikipedia, blogs, news sites |
+| `login_page` | Any login/signup page |
+| `listing_page` | Hacker News, StackOverflow |
+| `qa_page` | StackOverflow questions |
+| `form_page` | Contact forms, surveys |
