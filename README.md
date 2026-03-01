@@ -22,6 +22,8 @@
 
 ---
 
+**The stealthiest, most reliable MCP browser server for AI agents.** 30 tools. 22 anti-fingerprint scripts. LLM-powered extraction. Zero IDE setup hassle.
+
 Go-WebMCP is a production-ready **Model Context Protocol (MCP)** server built in Go. It acts as an **Intelligent Stealth Browser** — enabling LLMs, autonomous agents, and AI-powered IDEs to navigate the web, bypass anti-bot systems, and extract structured data at scale.
 
 > **30 MCP tools** · **22 stealth scripts** · **Zero-config IDE integration** · **Plugin system** · **Works with any LLM**
@@ -86,6 +88,31 @@ docker run -p 8080:8080 \
   -e BROWSER_HEADLESS="true" \
   go-webmcp --port=8080
 ```
+
+### Try It Without an API Key
+
+The `get_page_context` tool works without any LLM — pure JavaScript analysis:
+
+```bash
+# Run the 10-site detection test (no API key needed!)
+python3 examples/test_page_context.py
+```
+
+Output for any page:
+```json
+{
+  "page_type": "product_page",
+  "has_search": true,
+  "has_reviews": true,
+  "has_cart": true,
+  "has_pagination": true,
+  "link_count": 322,
+  "main_headings": ["Apple iPhone 15 (128 GB) - Black"],
+  "summary": "Apple iPhone 15..."
+}
+```
+
+Agents call this after every navigation to plan their next action — zero cost, instant response.
 
 ### Option 3: Docker Compose
 
@@ -362,13 +389,32 @@ We welcome contributions of all sizes! See [CONTRIBUTING.md](CONTRIBUTING.md) fo
 - **Improve docs** — Fix typos, add examples, clarify explanations
 - **Write tests** — Improve test coverage
 
+## Roadmap
+
+- [ ] **Built-in Task Planner** — autonomous multi-step execution from a single prompt
+- [ ] **Persistent Sessions** — resume browser state across server restarts
+- [ ] **More Vision Tools** — OCR, element detection, visual diff
+- [ ] **Webhook Notifications** — stream extraction progress to external services
+- [ ] **Recipe System** — shareable automation recipes (like plugins but higher-level)
+- [ ] **Browser Pool** — multiple parallel browser instances for high-throughput scraping
+
+Have an idea? [Open an issue](https://github.com/yranjan06/GO-WebMcp/issues) or submit a PR!
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ## Star History
 
-If you find Go-WebMCP useful, please give it a — it helps the project grow!
+If you find Go-WebMCP useful, please give it a star — it helps the project grow!
+
+<a href="https://star-history.com/#yranjan06/GO-WebMcp&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yranjan06/GO-WebMcp&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yranjan06/GO-WebMcp&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yranjan06/GO-WebMcp&type=Date" />
+  </picture>
+</a>
 
 ---
 
