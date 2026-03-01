@@ -13,6 +13,7 @@ import (
 	"github.com/metoro-io/mcp-golang/transport/stdio"
 	"github.com/ranjanyadav/web-mcp/pkg/agent"
 	"github.com/ranjanyadav/web-mcp/pkg/browser"
+	"github.com/ranjanyadav/web-mcp/pkg/plugins"
 	"github.com/ranjanyadav/web-mcp/pkg/transport/sse"
 )
 
@@ -88,6 +89,8 @@ func main() {
 		log.Printf("%s[AI]%s Agent not available: %v (AI-driven tools disabled)", ColorYellow, ColorReset, err)
 	}
 
+	stateStore := agent.NewStateStore()
+
 	// ─── Choose Transport ───
 	var server *mcp_golang.Server
 	if *port > 0 {
@@ -100,7 +103,13 @@ func main() {
 	}
 
 	// ─── Register All Tools ───
-	RegisterAllTools(server, engine, aiAgent)
+	RegisterAllTools(server, engine, aiAgent, stateStore)
+
+	// ─── Load Dynamic Plugins ───
+	extDir := "./extensions"
+	if err := plugins.LoadPlugins(server, engine, extDir); err != nil {
+		log.Printf("%s[PLUGINS]%s Failed to load extensions: %v", ColorYellow, ColorReset, err)
+	}
 
 	// ─── Start Server ───
 	if *port > 0 {
