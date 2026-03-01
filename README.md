@@ -43,17 +43,19 @@ Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.
 
 ## What It Can Do
 
-- **LLM-Powered Navigation** — tell it `click("Login button")` or `type("Search box", "AI tools")` and it figures out the rest
-- **Stealth Hardening** — 22 fingerprint patches: Bézier mouse curves, human typing cadence, WebGL/Canvas noise, font spoofing
-- **Map-Reduce Extraction** — splits massive pages (300K+ chars) into chunks, runs parallel LLM extraction, stitches validated JSON
-- **Page Context Analysis** — zero-LLM page analyzer that detects page type, features, and interactive elements instantly
-- **Vision System** — labeled screenshots with bounding boxes for Vision-Language Models
-- **Plugin System** — drop JSON+JS into `extensions/` and it auto-registers as a new MCP tool
-- **Memory Store** — key-value storage between tool calls for multi-step agent workflows
-- **Parallel Extraction** — extract data from multiple URLs at once using isolated browser contexts
-- **Adaptive Rate Limiting** — auto-reduces concurrency on 429 errors, recovers after success streaks
-- **Universal LLM Support** — works with OpenAI, Groq, Ollama, Together, NVIDIA NIM, LM Studio — anything OpenAI-compatible
-- **Docker Ready** — single command containerized deployment for headless scraping at scale
+| Capability | What it means for your Agent |
+|---|---|
+| **LLM-Powered Navigation** | Tell it `click("Login button")` or `type("Search box", "AI")` and it figures out the DOM |
+| **Stealth Hardening** | 22 fingerprint patches (Bézier mouse, typing cadence, WebGL noise) to bypass bot protection |
+| **Map-Reduce Extraction** | Splits massive 300K+ char pages into chunks, runs parallel LLM extraction, stitches JSON |
+| **Page Context Analysis** | Zero-LLM instant analyzer that detects page type, features, and interactive elements |
+| **Vision System** | Gets labeled screenshots with bounding boxes mapped directly to DOM elements for VLMs |
+| **Plugin System** | Drop JSON+JS into `extensions/` and it auto-registers as a new native MCP tool |
+| **Memory Store** | Key-value storage between tool calls for complex, multi-step agent workflows |
+| **Parallel Extraction** | Extract structured data from multiple URLs simultaneously using isolated browser contexts |
+| **Adaptive Rate Limiting** | Auto-reduces concurrency on HTTP 429 errors, recovers automatically after success streaks |
+| **Universal LLM Support** | Works seamlessly with OpenAI, Groq, Ollama, Together, NVIDIA NIM, and LM Studio |
+| **Docker Ready** | Single-command containerized deployment for headless scraping at scale |
 
 ## Quick Start
 
