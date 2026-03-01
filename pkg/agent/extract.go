@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
@@ -18,6 +20,24 @@ import (
 	"github.com/kaptinlin/jsonrepair"
 	"github.com/playwright-community/playwright-go"
 )
+
+// ─── Extraction Cache ───
+
+type cacheEntry struct {
+	result    string
+	timestamp time.Time
+}
+
+var (
+	extractionCache   = make(map[string]cacheEntry)
+	extractionCacheMu sync.RWMutex
+	cacheTTL          = 60 * time.Second
+)
+
+func cacheKey(url, schema string) string {
+	h := sha256.Sum256([]byte(url + "|" + schema))
+	return fmt.Sprintf("%x", h[:16])
+}
 
 const extractSystemPrompt = "You are an expert data extractor. From the given markdown, extract ALL requested structured data.\nReturn ONLY a valid JSON object. No explanation, no markdown formatting (like ```json), no extra text."
 
@@ -142,11 +162,23 @@ func (a *Agent) callExtractionLLM(actualModel string, messages []map[string]inte
 // ExtractData uses a Map-Reduce architecture to extract structured data.
 func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverride string) (string, error) {
 	// W3C WebMCP Integration (Chrome 146+ incubation)
-	// If the website natively exposes structured MCP tools, we can eventually bypass brittle DOM scraping entirely.
 	hasWebMCP, err := page.Evaluate(`() => typeof navigator !== 'undefined' && typeof navigator.modelContext !== 'undefined'`)
 	if err == nil && hasWebMCP == true {
 		log.Printf("\033[32m[AI] Native W3C WebMCP Support Detected!\033[0m Future routing will bypass DOM pruning to execute registered native tools.")
 	}
+
+	// Extraction Cache: same URL + schema within 60s = instant return
+	pageURL := page.URL()
+	schemaJSON, _ := json.Marshal(schema)
+	ck := cacheKey(pageURL, string(schemaJSON))
+
+	extractionCacheMu.RLock()
+	if entry, ok := extractionCache[ck]; ok && time.Since(entry.timestamp) < cacheTTL {
+		extractionCacheMu.RUnlock()
+		log.Printf("[AI] Cache HIT for %s — returning cached result", pageURL)
+		return entry.result, nil
+	}
+	extractionCacheMu.RUnlock()
 
 	// 1. Prune the HTML — aggressive DOM cleaning to minimize token usage.
 	// Goal: reduce a 300K+ page to < 10K chars of meaningful text content.
@@ -228,7 +260,18 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverr
 		mdText, _ = page.Locator("body").InnerText()
 	}
 
-	log.Printf("[AI] Extraction context reduced to %d characters of Markdown", len(mdText))
+	log.Printf("[AI] Extraction context: %d characters of Markdown", len(mdText))
+
+	// InnerText fallback: if Markdown is still too large (>15K), use pure text
+	// This strips ALL HTML structure, giving us just the visible text
+	if len(mdText) > 15000 {
+		log.Printf("[AI] Markdown too large (%d chars). Falling back to innerText for speed...", len(mdText))
+		innerText, itErr := page.Locator("body").InnerText()
+		if itErr == nil && len(innerText) > 0 && len(innerText) < len(mdText) {
+			mdText = innerText
+			log.Printf("[AI] InnerText fallback: reduced to %d characters", len(mdText))
+		}
+	}
 
 	// Format schema instruction
 	var schemaInstruction string
@@ -319,23 +362,22 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 		actualModel = modelOverride
 	}
 
-	// Semaphore to limit concurrent LLM API calls and prevent 429 Too Many Requests limits
-	// Keep low (3) to stay within free-tier rate limits
-	concurrencyLimit := 3
-	sem := make(chan struct{}, concurrencyLimit)
+	// Adaptive rate limiter: adjusts concurrency on 429 errors
+	rl := NewAdaptiveRateLimiter(3)
 
 	for i, chunkText := range chunks {
-		// Acquire token
-		sem <- struct{}{}
+		rl.Acquire()
 
 		go func(idx int, text string) {
-			defer func() { <-sem }() // Release token when done
-
 			chunkMessages := []map[string]interface{}{
 				{"role": "system", "content": extractSystemPrompt},
 				{"role": "user", "content": fmt.Sprintf("Chunk Markdown:\n%s\n\nRequested Instructions:\n%s", text, schemaInstruction)},
 			}
 			data, err := a.callExtractionLLM(actualModel, chunkMessages, 0.0, responseFormat)
+			if err != nil && strings.Contains(err.Error(), "429") {
+				rl.OnRateLimit()
+			}
+			rl.Release()
 			resultsChan <- chunkResult{index: idx, data: data, err: err}
 		}(i, chunkText)
 	}
@@ -374,6 +416,11 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 
 	finalMegaBytes, _ := json.MarshalIndent(masterArray, "", "  ")
 	finalMegaJSON := string(finalMegaBytes)
+
+	// Store in extraction cache
+	extractionCacheMu.Lock()
+	extractionCache[ck] = cacheEntry{result: finalMegaJSON, timestamp: time.Now()}
+	extractionCacheMu.Unlock()
 
 	return finalMegaJSON, nil
 }
