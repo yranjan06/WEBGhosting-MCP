@@ -12,10 +12,8 @@
   </p>
   <p align="center">
     <a href="#quick-start">Quick Start</a> •
-    <a href="#features">Features</a> •
     <a href="#available-tools-30">Tools</a> •
-    <a href="#architecture">Architecture</a> •
-    <a href="#examples">Examples</a> •
+    <a href="#how-it-works">How It Works</a> •
     <a href="CONTRIBUTING.md">Contributing</a>
   </p>
 </p>
@@ -28,7 +26,7 @@ Go-WebMCP is a production-ready **Model Context Protocol (MCP)** server built in
 
 > **30 MCP tools** · **22 stealth scripts** · **Zero-config IDE integration** · **Plugin system** · **Works with any LLM**
 
-Built with ❤️ for the AI community. **Contributions welcome!**
+Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.md)**
 
 ## Features
 
@@ -53,17 +51,18 @@ Built with ❤️ for the AI community. **Contributions welcome!**
 - **Go 1.26+** ([install](https://go.dev/dl/))
 - **Playwright browsers**: installed automatically via `make install-deps`
 
-### Option 1: Local Binary (IDE Integration)
+### Build & Run
 
 ```bash
-# Clone and build
 git clone https://github.com/yranjan06/GO-WebMcp.git
 cd GO-WebMcp
 make install-deps
 make build
 ```
 
-**Add to your IDE's MCP config** (`mcp.json` or `settings.json`):
+### IDE Integration
+
+Add to your IDE's MCP config (`mcp.json` or `settings.json`):
 
 ```json
 {
@@ -79,7 +78,7 @@ make build
 }
 ```
 
-### Option 2: Docker
+### Docker
 
 ```bash
 make docker
@@ -89,37 +88,26 @@ docker run -p 8080:8080 \
   go-webmcp --port=8080
 ```
 
-### Try It Without an API Key
+### Try Without an API Key
 
-The `get_page_context` tool works without any LLM — pure JavaScript analysis:
+The `get_page_context` tool runs pure JavaScript — no LLM needed:
 
 ```bash
-# Run the 10-site detection test (no API key needed!)
 python3 examples/test_page_context.py
 ```
 
-Output for any page:
 ```json
 {
   "page_type": "product_page",
   "has_search": true,
   "has_reviews": true,
   "has_cart": true,
-  "has_pagination": true,
   "link_count": 322,
-  "main_headings": ["Apple iPhone 15 (128 GB) - Black"],
-  "summary": "Apple iPhone 15..."
+  "main_headings": ["Apple iPhone 15 (128 GB) - Black"]
 }
 ```
 
 Agents call this after every navigation to plan their next action — zero cost, instant response.
-
-### Option 3: Docker Compose
-
-```bash
-export AI_API_KEY="your-key"
-make docker-compose
-```
 
 ## Environment Variables
 
@@ -134,19 +122,14 @@ make docker-compose
 | `BROWSER_HEADLESS` | — | `false` | Run Chromium in headless mode |
 | `BROWSER_USER_DATA_DIR` | — | — | Persist cookies/sessions across restarts |
 | `HTTP_PROXY` | — | — | Proxy server (e.g., `http://proxy:8080`) |
-| `PROXY_USERNAME` | — | — | Proxy authentication username |
-| `PROXY_PASSWORD` | — | — | Proxy authentication password |
 
-**Multi-LLM Examples:**
+Works with any OpenAI-compatible provider:
 ```bash
-# Groq (free tier)
+# Groq (free)
 export AI_API_KEY="gsk_..." AI_BASE_URL="https://api.groq.com/openai/v1" AI_MODEL="llama-3.1-8b-instant"
 
 # Ollama (local)
 export AI_API_KEY="ollama" AI_BASE_URL="http://localhost:11434/v1" AI_MODEL="llama3.1"
-
-# NVIDIA NIM
-export AI_API_KEY="nvapi-..." AI_BASE_URL="https://integrate.api.nvidia.com/v1" AI_MODEL="meta/llama-3.1-8b-instruct"
 ```
 
 ## Available Tools (30)
@@ -209,7 +192,7 @@ export AI_API_KEY="nvapi-..." AI_BASE_URL="https://integrate.api.nvidia.com/v1" 
 | `get_network_requests` | Get captured HTTP request log |
 | `clear_network_requests` | Clear the request log |
 
-## Architecture
+## How It Works
 
 ```mermaid
 graph TB
@@ -261,144 +244,10 @@ graph TB
     TOOLS --> PLUG
 ```
 
-## Project Structure
+## Demo
 
-```
-GO-WebMcp/
-├── cmd/server/              # MCP server entry point
-│   ├── main.go              # Bootstrap: flags, banner, transport
-│   ├── tools.go             # 30 MCP tool handlers
-│   └── config.go            # Version and constants
-├── pkg/
-│   ├── agent/               # AI-powered intelligence
-│   │   ├── perception.go    # NL element finding via accessibility tree
-│   │   ├── extract.go       # 5-stage Map-Reduce extraction pipeline
-│   │   ├── ratelimit.go     # Adaptive rate limiter (429-aware)
-│   │   ├── memory.go        # Thread-safe key-value StateStore
-│   │   └── subtask.go       # Parallel multi-URL extraction
-│   ├── browser/             # Playwright engine wrapper
-│   │   ├── engine.go        # Core: init, navigate, tabs, scroll, page context
-│   │   ├── humanize.go      # Bézier mouse, typing delays, natural scrolling
-│   │   ├── vision.go        # Labeled screenshots with bounding boxes
-│   │   └── retry.go         # Exponential backoff utility
-│   ├── stealth/             # Anti-detection layer
-│   │   ├── stealth.go       # Config + script injection
-│   │   └── js/ (22 files)   # Embedded fingerprint patches
-│   ├── plugins/             # Dynamic plugin system
-│   │   └── runtime.go       # JSON+JS plugin loader
-│   └── transport/sse/       # HTTP/SSE transport
-├── examples/                # Ready-to-run demo scripts
-│   ├── client.py            # Reusable MCP Python client
-│   ├── e2e_amazon_flipkart.py  # Smart price+review comparison
-│   ├── test_page_context.py    # 10-site page detection test
-│   └── ...                  # LinkedIn, Reddit, Twitter, etc.
-├── extensions/              # Drop-in plugin directory
-├── Dockerfile
-├── docker-compose.yml
-├── Makefile
-└── go.mod
-```
-
-## Python Integration
-
-Use the built-in client from `examples/client.py`:
-
-```python
-from examples.client import GoWebMCPClient
-
-client = GoWebMCPClient()
-
-# Navigate
-client.call("browse", {"url": "https://news.ycombinator.com"})
-
-# Analyze page
-context = client.call("get_page_context", {})
-print(context)  # {"page_type": "listing_page", "link_count": 229, ...}
-
-# Extract structured data
-data = client.call("extract", {
-    "schema": {
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string"},
-                "points": {"type": "string"},
-                "comments": {"type": "string"}
-            }
-        },
-        "description": "Top 10 stories with title, points, comments"
-    }
-})
-
-client.close()
-```
-
-## Plugin System
-
-Extend Go-WebMCP without modifying core code. Drop files into `extensions/`:
-
-**1. Create `extensions/my_scraper.json`:**
-```json
-{
-  "name": "my_scraper",
-  "description": "Extract custom data from current page",
-  "script_file": "my_scraper.js"
-}
-```
-
-**2. Create `extensions/my_scraper.js`:**
-```javascript
-(args) => {
-    const items = document.querySelectorAll('.item');
-    return JSON.stringify(
-        Array.from(items).map(el => ({
-            text: el.textContent.trim(),
-            href: el.querySelector('a')?.href
-        }))
-    );
-}
-```
-
-**3. Restart server** — `my_scraper` is now available as an MCP tool!
-
-## Examples
-
-| Script | What It Does |
-|---|---|
-| [`client.py`](examples/client.py) | Reusable MCP Python client (shared by all scripts) |
-| [`e2e_amazon_flipkart.py`](examples/e2e_amazon_flipkart.py) | Smart multi-step: navigate → extract → click product → isolate reviews → compare |
-| [`test_page_context.py`](examples/test_page_context.py) | Tests page detection on 10 major websites (no API key needed) |
-| [`e2e_demo.py`](examples/e2e_demo.py) | Basic navigation + extraction demo |
-| [`e2e_linkedin.py`](examples/e2e_linkedin.py) | LinkedIn profile extraction |
-| [`e2e_reddit.py`](examples/e2e_reddit.py) | Reddit subreddit scraping |
-| [`e2e_twitter.py`](examples/e2e_twitter.py) | Twitter/X feed extraction |
-| [`e2e_naukri.py`](examples/e2e_naukri.py) | Job portal extraction |
-| [`test_tools.py`](examples/test_tools.py) | Tool integration tests |
-
-## Contributing
-
-We welcome contributions of all sizes! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guides.
-
-**Quick ways to contribute:**
-- **Report bugs** — [Open an issue](https://github.com/yranjan06/GO-WebMcp/issues)
-- **Suggest features** — Ideas for new tools or improvements
-- **Add stealth scripts** — New browser fingerprint bypasses
-- **Create plugins** — Share useful extensions
-- **Add MCP tools** — Expand the tool suite
-- **Improve docs** — Fix typos, add examples, clarify explanations
-- **Write tests** — Improve test coverage
-
-## Roadmap
-
-- [ ] **Built-in Task Planner** — autonomous multi-step execution from a single prompt
-- [ ] **Persistent Sessions** — resume browser state across server restarts
-- [ ] **More Vision Tools** — OCR, element detection, visual diff
-- [ ] **Webhook Notifications** — stream extraction progress to external services
-- [ ] **Recipe System** — shareable automation recipes (like plugins but higher-level)
-- [ ] **Browser Pool** — multiple parallel browser instances for high-throughput scraping
-
-Have an idea? [Open an issue](https://github.com/yranjan06/GO-WebMcp/issues) or submit a PR!
+<!-- TODO: Add demo video/GIF here -->
+> Coming soon — a 60-second video showing Go-WebMCP in action with Cursor.
 
 ## License
 
