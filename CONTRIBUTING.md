@@ -18,9 +18,9 @@ First off — **thank you** for considering contributing! Go-WebMCP is built for
 
 | Level | What | Difficulty |
 |---|---|---|
-| 🟢 **Easy** | Fix typos, improve docs, add examples | Beginner friendly |
-| 🟡 **Medium** | Add stealth scripts, create plugins, improve page detection | Some Go/JS knowledge |
-| 🔴 **Advanced** | Add MCP tools, improve extraction pipeline, new browser features | Go + Playwright experience |
+| **Easy** | Fix typos, improve docs, add examples | Beginner friendly |
+| **Medium** | Add stealth scripts, create plugins, improve page detection | Some Go/JS knowledge |
+| **Advanced** | Add MCP tools, improve extraction pipeline, new browser features | Go + Playwright experience |
 
 ## Getting Started
 
@@ -44,7 +44,7 @@ python3 examples/test_page_context.py  # No API key needed!
 git checkout -b feature/my-feature
 ```
 
-## 🥷 Adding Stealth Scripts
+## Adding Stealth Scripts
 
 **One of the easiest ways to contribute!** Each script patches a browser fingerprint signal.
 
@@ -88,7 +88,7 @@ Before adding, check if it already exists: `navigator.webdriver`, `chrome.app`, 
 - AudioContext fingerprint noise
 - Performance API timing noise
 
-## 🛠️ Adding MCP Tools
+## Adding MCP Tools
 
 ### Steps
 
@@ -126,7 +126,7 @@ Before adding, check if it already exists: `navigator.webdriver`, `chrome.app`, 
 | `aiAgent` | `.PerceiveElement()`, `.ExtractData()`, `.ParallelExtract()` |
 | `stateStore` | `.Store()`, `.Retrieve()`, `.Delete()`, `.ListKeys()` |
 
-## 🔌 Creating Plugins
+## Creating Plugins
 
 Plugins are the **easiest way to add tools** without touching Go code.
 
@@ -161,7 +161,7 @@ Plugins are the **easiest way to add tools** without touching Go code.
 - No direct access to Go APIs (use MCP tools for that)
 - Arguments are passed as a JSON object to the function
 
-## 🔍 Improving Page Detection
+## Improving Page Detection
 
 The `get_page_context` tool uses pure JavaScript to detect page types. Help us improve accuracy!
 
@@ -182,7 +182,7 @@ The `get_page_context` tool uses pure JavaScript to detect page types. Help us i
 
 `search_results`, `product_page`, `login_page`, `article`, `social_feed`, `video_platform`, `code_repository`, `qa_page`, `listing_page`, `review_page`, `form_page`, `general`, `blank`
 
-## 📝 Adding Example Scripts
+## Adding Example Scripts
 
 All examples live in `examples/` and use the shared `client.py`.
 
@@ -273,4 +273,4 @@ By contributing, you agree that your contributions will be licensed under the pr
 
 ---
 
-**Thank you for making Go-WebMCP better!** 🙏
+**Thank you for making Go-WebMCP better!** 

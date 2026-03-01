@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">🌐 Go-WebMCP</h1>
+  <h1 align="center">Go-WebMCP</h1>
   <p align="center">
     <strong>Intelligent Stealth Browser &bull; MCP Server &bull; Built for AI Agents</strong>
   </p>
@@ -11,11 +11,11 @@
     <a href="https://github.com/yranjan06/GO-WebMcp/stargazers"><img src="https://img.shields.io/github/stars/yranjan06/GO-WebMcp?style=social" alt="Stars"></a>
   </p>
   <p align="center">
-    <a href="#-quick-start">Quick Start</a> •
-    <a href="#-features">Features</a> •
-    <a href="#-available-tools-30">Tools</a> •
-    <a href="#-architecture">Architecture</a> •
-    <a href="#-examples">Examples</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#features">Features</a> •
+    <a href="#available-tools-30">Tools</a> •
+    <a href="#architecture">Architecture</a> •
+    <a href="#examples">Examples</a> •
     <a href="CONTRIBUTING.md">Contributing</a>
   </p>
 </p>
@@ -28,23 +28,23 @@ Go-WebMCP is a production-ready **Model Context Protocol (MCP)** server built in
 
 Built with ❤️ for the AI community. **Contributions welcome!**
 
-## ✨ Features
+## Features
 
 | Feature | Description |
 |---|---|
-| 🧠 **LLM-Powered Navigation** | Navigate using natural language — `click("Login button")`, `type("Search box", "AI tools")` |
-| 🥷 **Stealth Hardening** | 22 Playwright-level fingerprint patches: Bézier mouse, human typing, WebGL/Canvas noise, font spoofing |
-| 📊 **Map-Reduce Extraction** | Splits massive pages (300K+ chars) → smart chunks → parallel LLM extraction → validated JSON |
-| 🔍 **Page Context Analysis** | Zero-LLM page analyzer: detects page type, features, interactive elements — helps agents plan smartly |
-| 👁️ **Vision System** | Labeled screenshots with bounding boxes for Vision-Language Models |
-| 🔌 **Plugin System** | Drop JSON+JS into `extensions/` — auto-registered as MCP tools at startup |
-| 💾 **Memory Store** | Key-value storage between tool calls for multi-step workflows |
-| ⚡ **Parallel Extraction** | Extract data from multiple URLs simultaneously with isolated browser contexts |
-| 🔄 **Adaptive Rate Limiting** | Dynamic concurrency control — auto-reduces on 429, recovers after success |
-| 🌐 **Universal LLM Support** | OpenAI, Ollama, Groq, Together, NVIDIA NIM, LM Studio — any OpenAI-compatible API |
-| 🐳 **Docker Ready** | Single-command containerized deployment for headless scraping at scale |
+| **LLM-Powered Navigation** | Navigate using natural language — `click("Login button")`, `type("Search box", "AI tools")` |
+| **Stealth Hardening** | 22 Playwright-level fingerprint patches: Bézier mouse, human typing, WebGL/Canvas noise, font spoofing |
+| **Map-Reduce Extraction** | Splits massive pages (300K+ chars) → smart chunks → parallel LLM extraction → validated JSON |
+| **Page Context Analysis** | Zero-LLM page analyzer: detects page type, features, interactive elements — helps agents plan smartly |
+| **Vision System** | Labeled screenshots with bounding boxes for Vision-Language Models |
+| **Plugin System** | Drop JSON+JS into `extensions/` — auto-registered as MCP tools at startup |
+| **Memory Store** | Key-value storage between tool calls for multi-step workflows |
+| **Parallel Extraction** | Extract data from multiple URLs simultaneously with isolated browser contexts |
+| **Adaptive Rate Limiting** | Dynamic concurrency control — auto-reduces on 429, recovers after success |
+| **Universal LLM Support** | OpenAI, Ollama, Groq, Together, NVIDIA NIM, LM Studio — any OpenAI-compatible API |
+| **Docker Ready** | Single-command containerized deployment for headless scraping at scale |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ export AI_API_KEY="your-key"
 make docker-compose
 ```
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -122,7 +122,7 @@ export AI_API_KEY="ollama" AI_BASE_URL="http://localhost:11434/v1" AI_MODEL="lla
 export AI_API_KEY="nvapi-..." AI_BASE_URL="https://integrate.api.nvidia.com/v1" AI_MODEL="meta/llama-3.1-8b-instruct"
 ```
 
-## 🛠️ Available Tools (30)
+## Available Tools (30)
 
 ### Navigation
 | Tool | Description |
@@ -182,7 +182,7 @@ export AI_API_KEY="nvapi-..." AI_BASE_URL="https://integrate.api.nvidia.com/v1" 
 | `get_network_requests` | Get captured HTTP request log |
 | `clear_network_requests` | Clear the request log |
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TB
@@ -234,7 +234,7 @@ graph TB
     TOOLS --> PLUG
 ```
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 GO-WebMcp/
@@ -272,7 +272,7 @@ GO-WebMcp/
 └── go.mod
 ```
 
-## 🐍 Python Integration
+## Python Integration
 
 Use the built-in client from `examples/client.py`:
 
@@ -307,7 +307,7 @@ data = client.call("extract", {
 client.close()
 ```
 
-## 🔌 Plugin System
+## Plugin System
 
 Extend Go-WebMCP without modifying core code. Drop files into `extensions/`:
 
@@ -335,7 +335,7 @@ Extend Go-WebMCP without modifying core code. Drop files into `extensions/`:
 
 **3. Restart server** — `my_scraper` is now available as an MCP tool!
 
-## 📁 Examples
+## Examples
 
 | Script | What It Does |
 |---|---|
@@ -349,26 +349,26 @@ Extend Go-WebMCP without modifying core code. Drop files into `extensions/`:
 | [`e2e_naukri.py`](examples/e2e_naukri.py) | Job portal extraction |
 | [`test_tools.py`](examples/test_tools.py) | Tool integration tests |
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions of all sizes! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guides.
 
 **Quick ways to contribute:**
-- 🐛 **Report bugs** — [Open an issue](https://github.com/yranjan06/GO-WebMcp/issues)
-- 💡 **Suggest features** — Ideas for new tools or improvements
-- 🥷 **Add stealth scripts** — New browser fingerprint bypasses
-- 🔌 **Create plugins** — Share useful extensions
-- 🛠️ **Add MCP tools** — Expand the tool suite
-- 📝 **Improve docs** — Fix typos, add examples, clarify explanations
-- 🧪 **Write tests** — Improve test coverage
+- **Report bugs** — [Open an issue](https://github.com/yranjan06/GO-WebMcp/issues)
+- **Suggest features** — Ideas for new tools or improvements
+- **Add stealth scripts** — New browser fingerprint bypasses
+- **Create plugins** — Share useful extensions
+- **Add MCP tools** — Expand the tool suite
+- **Improve docs** — Fix typos, add examples, clarify explanations
+- **Write tests** — Improve test coverage
 
-## 📄 License
+## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
-## ⭐ Star History
+## Star History
 
-If you find Go-WebMCP useful, please give it a ⭐ — it helps the project grow!
+If you find Go-WebMCP useful, please give it a — it helps the project grow!
 
 ---
 
