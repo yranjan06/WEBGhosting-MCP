@@ -12,8 +12,8 @@
   </p>
   <p align="center">
     <a href="#quick-start">Quick Start</a> •
-    <a href="#available-tools-30">Tools</a> •
-    <a href="#how-it-works">How It Works</a> •
+    <a href="#what-it-can-do">Features</a> •
+    <a href="#all-30-tools">Tools</a> •
     <a href="CONTRIBUTING.md">Contributing</a>
   </p>
 </p>
@@ -22,36 +22,27 @@
 
 **The stealthiest, most reliable MCP browser server for AI agents.** 30 tools. 22 anti-fingerprint scripts. LLM-powered extraction. Zero IDE setup hassle.
 
-Go-WebMCP is a production-ready **Model Context Protocol (MCP)** server built in Go. It acts as an **Intelligent Stealth Browser** — enabling LLMs, autonomous agents, and AI-powered IDEs to navigate the web, bypass anti-bot systems, and extract structured data at scale.
+Go-WebMCP is a production-ready **Model Context Protocol (MCP)** server built in Go. It gives LLMs, AI agents, and IDEs like Cursor a **stealth browser** they can control — navigate pages, click buttons, fill forms, extract data, and more — all through natural language.
 
 > **30 MCP tools** · **22 stealth scripts** · **Zero-config IDE integration** · **Plugin system** · **Works with any LLM**
 
 Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.md)**
 
-## Features
+## What It Can Do
 
-| Feature | Description |
-|---|---|
-| **LLM-Powered Navigation** | Navigate using natural language — `click("Login button")`, `type("Search box", "AI tools")` |
-| **Stealth Hardening** | 22 Playwright-level fingerprint patches: Bézier mouse, human typing, WebGL/Canvas noise, font spoofing |
-| **Map-Reduce Extraction** | Splits massive pages (300K+ chars) → smart chunks → parallel LLM extraction → validated JSON |
-| **Page Context Analysis** | Zero-LLM page analyzer: detects page type, features, interactive elements — helps agents plan smartly |
-| **Vision System** | Labeled screenshots with bounding boxes for Vision-Language Models |
-| **Plugin System** | Drop JSON+JS into `extensions/` — auto-registered as MCP tools at startup |
-| **Memory Store** | Key-value storage between tool calls for multi-step workflows |
-| **Parallel Extraction** | Extract data from multiple URLs simultaneously with isolated browser contexts |
-| **Adaptive Rate Limiting** | Dynamic concurrency control — auto-reduces on 429, recovers after success |
-| **Universal LLM Support** | OpenAI, Ollama, Groq, Together, NVIDIA NIM, LM Studio — any OpenAI-compatible API |
-| **Docker Ready** | Single-command containerized deployment for headless scraping at scale |
+- **LLM-Powered Navigation** — tell it `click("Login button")` or `type("Search box", "AI tools")` and it figures out the rest
+- **Stealth Hardening** — 22 fingerprint patches: Bézier mouse curves, human typing cadence, WebGL/Canvas noise, font spoofing
+- **Map-Reduce Extraction** — splits massive pages (300K+ chars) into chunks, runs parallel LLM extraction, stitches validated JSON
+- **Page Context Analysis** — zero-LLM page analyzer that detects page type, features, and interactive elements instantly
+- **Vision System** — labeled screenshots with bounding boxes for Vision-Language Models
+- **Plugin System** — drop JSON+JS into `extensions/` and it auto-registers as a new MCP tool
+- **Memory Store** — key-value storage between tool calls for multi-step agent workflows
+- **Parallel Extraction** — extract data from multiple URLs at once using isolated browser contexts
+- **Adaptive Rate Limiting** — auto-reduces concurrency on 429 errors, recovers after success streaks
+- **Universal LLM Support** — works with OpenAI, Groq, Ollama, Together, NVIDIA NIM, LM Studio — anything OpenAI-compatible
+- **Docker Ready** — single command containerized deployment for headless scraping at scale
 
 ## Quick Start
-
-### Prerequisites
-
-- **Go 1.26+** ([install](https://go.dev/dl/))
-- **Playwright browsers**: installed automatically via `make install-deps`
-
-### Build & Run
 
 ```bash
 git clone https://github.com/yranjan06/GO-WebMcp.git
@@ -60,9 +51,7 @@ make install-deps
 make build
 ```
 
-### IDE Integration
-
-Add to your IDE's MCP config (`mcp.json` or `settings.json`):
+Add to your IDE's MCP config (`mcp.json`):
 
 ```json
 {
@@ -78,19 +67,16 @@ Add to your IDE's MCP config (`mcp.json` or `settings.json`):
 }
 ```
 
-### Docker
+Or run with Docker:
 
 ```bash
 make docker
-docker run -p 8080:8080 \
-  -e AI_API_KEY="your-key" \
-  -e BROWSER_HEADLESS="true" \
-  go-webmcp --port=8080
+docker run -p 8080:8080 -e AI_API_KEY="your-key" -e BROWSER_HEADLESS="true" go-webmcp --port=8080
 ```
 
 ### Try Without an API Key
 
-The `get_page_context` tool runs pure JavaScript — no LLM needed:
+`get_page_context` runs pure JavaScript — no LLM needed:
 
 ```bash
 python3 examples/test_page_context.py
@@ -107,21 +93,15 @@ python3 examples/test_page_context.py
 }
 ```
 
-Agents call this after every navigation to plan their next action — zero cost, instant response.
-
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `AI_API_KEY` | Yes | — | API key for your LLM provider |
-| `AI_BASE_URL` | — | OpenAI | Custom LLM endpoint URL |
-| `AI_MODEL` | — | `gpt-4o` | Model for element finding + extraction |
-| `EXTRACTION_MODEL` | — | same as `AI_MODEL` | Separate (faster) model for data extraction |
-| `EXTRACTION_API_KEY` | — | same as `AI_API_KEY` | Separate key for extraction model |
-| `EXTRACTION_BASE_URL` | — | same as `AI_BASE_URL` | Separate endpoint for extraction |
-| `BROWSER_HEADLESS` | — | `false` | Run Chromium in headless mode |
-| `BROWSER_USER_DATA_DIR` | — | — | Persist cookies/sessions across restarts |
-| `HTTP_PROXY` | — | — | Proxy server (e.g., `http://proxy:8080`) |
+- `AI_API_KEY` (required) — API key for your LLM provider
+- `AI_BASE_URL` — custom endpoint URL (default: OpenAI)
+- `AI_MODEL` — model name (default: `gpt-4o`)
+- `EXTRACTION_MODEL` — separate faster model for data extraction
+- `BROWSER_HEADLESS` — set `true` for headless mode
+- `BROWSER_USER_DATA_DIR` — persist cookies/sessions across restarts
+- `HTTP_PROXY` — proxy server URL
 
 Works with any OpenAI-compatible provider:
 ```bash
@@ -132,117 +112,21 @@ export AI_API_KEY="gsk_..." AI_BASE_URL="https://api.groq.com/openai/v1" AI_MODE
 export AI_API_KEY="ollama" AI_BASE_URL="http://localhost:11434/v1" AI_MODEL="llama3.1"
 ```
 
-## Available Tools (30)
+## All 30 Tools
 
-### Navigation
-| Tool | Description |
-|---|---|
-| `browse` | Navigate to a URL with full stealth mode |
-| `go_back` | Browser back button |
-| `go_forward` | Browser forward button |
+**Navigation** — `browse`, `go_back`, `go_forward`
 
-### AI Interaction
-| Tool | Description |
-|---|---|
-| `click` | Natural-language driven smart clicking (LLM finds element) |
-| `type` | Humanized typing on a targeted element |
-| `press_key` | Simulate keyboard key press (Enter, Tab, Escape, etc.) |
-| `fill_form` | Batch fill multiple form fields with human-like delays |
-| `scroll` | Scroll up/down with human-like behavior |
-| `scroll_to_bottom` | Dynamically scroll infinite feeds to completion |
+**AI Interaction** — `click`, `type`, `press_key`, `fill_form`, `scroll`, `scroll_to_bottom`
 
-### Data Extraction
-| Tool | Description |
-|---|---|
-| `extract` | Map-Reduce JSON extraction — provide schema, get structured data |
-| `parallel_extract` | Extract from multiple URLs simultaneously (isolated contexts) |
-| `execute_js` | Run arbitrary JavaScript in the page context |
-| `get_accessibility_tree` | Get semantic ARIA snapshot of the page |
-| `get_page_context` | **Zero-LLM page analyzer** — detects page type, features, counts |
+**Data Extraction** — `extract`, `parallel_extract`, `execute_js`, `get_accessibility_tree`, `get_page_context`
 
-### Vision
-| Tool | Description |
-|---|---|
-| `screenshot` | Capture viewport as base64 PNG |
-| `capture_labeled_snapshot` | Labeled screenshot with bounding boxes for VLMs |
+**Vision** — `screenshot`, `capture_labeled_snapshot`
 
-### Memory
-| Tool | Description |
-|---|---|
-| `memorize_data` | Store key-value data (JSON/strings) between tool calls |
-| `recall_data` | Retrieve stored data by key |
-| `list_memory_keys` | List all stored keys |
+**Memory** — `memorize_data`, `recall_data`, `list_memory_keys`
 
-### Multi-Tab
-| Tool | Description |
-|---|---|
-| `open_tab` | Open a new browser tab |
-| `switch_tab` | Switch to a tab by index |
-| `close_tab` | Close a tab by index |
-| `list_tabs` | List all open tabs with URLs and titles |
+**Multi-Tab** — `open_tab`, `switch_tab`, `close_tab`, `list_tabs`
 
-### Utilities
-| Tool | Description |
-|---|---|
-| `wait_for_selector` | Wait for a CSS selector to appear |
-| `wait_for_load_state` | Wait for page load / network idle |
-| `configure_dialog` | Auto-handle browser alert/confirm/prompt dialogs |
-| `get_status` | Server health + last action report |
-| `get_console_logs` | Retrieve browser console output |
-| `get_network_requests` | Get captured HTTP request log |
-| `clear_network_requests` | Clear the request log |
-
-## How It Works
-
-```mermaid
-graph TB
-    subgraph "Client Layer"
-        IDE["IDE / Agent<br/>(Cursor, Claude, VS Code)"]
-        PY["Python Scripts<br/>(examples/client.py)"]
-    end
-
-    subgraph "Transport"
-        STDIO["stdio<br/>(JSON-RPC)"]
-        SSE["HTTP/SSE<br/>(port mode)"]
-    end
-
-    subgraph "MCP Server"
-        TOOLS["30 Tool Handlers"]
-    end
-
-    subgraph "AI Agent Layer"
-        PERCEP["Perception<br/>(NL → Selector)"]
-        EXTRACT["Map-Reduce<br/>Extraction"]
-        RATE["Adaptive<br/>Rate Limiter"]
-        MEM["State<br/>Store"]
-    end
-
-    subgraph "Browser Engine"
-        ENGINE["Playwright<br/>Controller"]
-        HUMAN["Human<br/>Simulation"]
-        VISION["Vision<br/>System"]
-        STEALTH["22 Stealth<br/>Scripts"]
-    end
-
-    subgraph "Plugins"
-        PLUG["Dynamic<br/>Extensions"]
-    end
-
-    IDE --> STDIO
-    PY --> STDIO
-    IDE --> SSE
-    STDIO --> TOOLS
-    SSE --> TOOLS
-    TOOLS --> PERCEP
-    TOOLS --> EXTRACT
-    TOOLS --> MEM
-    TOOLS --> ENGINE
-    TOOLS --> VISION
-    EXTRACT --> RATE
-    ENGINE --> STEALTH
-    ENGINE --> HUMAN
-    TOOLS --> PLUG
-```
+**Utilities** — `wait_for_selector`, `wait_for_load_state`, `configure_dialog`, `get_status`, `get_console_logs`, `get_network_requests`, `clear_network_requests`
 
 ## Demo
 
