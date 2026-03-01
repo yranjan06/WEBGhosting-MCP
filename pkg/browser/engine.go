@@ -836,29 +836,96 @@ func (e *Engine) GetPageContext() (*PageContext, error) {
 		// Detect features
 		const lowerText = text.toLowerCase();
 		const lowerHTML = body ? body.innerHTML.toLowerCase() : '';
-
-		const hasSearch = !!document.querySelector('input[type="search"], [role="search"], input[placeholder*="search" i], input[name*="search" i], input[aria-label*="search" i]');
-		const hasLogin = !!(lowerHTML.match(/sign.?in|log.?in|password/) && document.querySelector('input[type="password"]'));
-		const hasReviews = !!(lowerHTML.match(/review|rating|stars|customer.?feedback/) && (lowerHTML.includes('★') || lowerHTML.includes('star') || document.querySelector('[class*="review"], [class*="rating"], [data-hook*="review"]')));
-		const hasPagination = !!document.querySelector('[class*="pagination"], [class*="pager"], nav[aria-label*="pagination" i], a[aria-label*="next" i], .next, .prev');
-		const hasVideo = !!document.querySelector('video, iframe[src*="youtube"], iframe[src*="vimeo"]');
-		const hasCart = !!(lowerHTML.match(/add.?to.?cart|buy.?now|add.?to.?bag|checkout/));
-
-		// Page type detection
-		let pageType = 'unknown';
 		const url = window.location.href.toLowerCase();
 		const title = document.title.toLowerCase();
 
-		if (hasLogin && inputs > 2) pageType = 'login_page';
-		else if (url.includes('/search') || url.includes('?q=') || url.includes('?k=') || url.includes('?query=') || title.includes('search')) pageType = 'search_results';
-		else if (hasCart && hasReviews) pageType = 'product_page';
-		else if (hasReviews && !hasCart) pageType = 'review_page';
-		else if (url.match(/\/(article|blog|post|news)\//)) pageType = 'article';
-		else if (document.querySelector('article') && text.length > 2000) pageType = 'article';
-		else if (url === 'about:blank' || url.startsWith('chrome://')) pageType = 'blank';
-		else if (forms > 0 && inputs > 3) pageType = 'form_page';
-		else if (links > 20 && images > 5) pageType = 'listing_page';
-		else pageType = 'general';
+		const hasSearch = !!document.querySelector('input[type="search"], [role="search"], input[placeholder*="search" i], input[name*="search" i], input[aria-label*="search" i]');
+
+		// Login detection: check for password fields OR sign-in/login as primary page purpose
+		const hasPasswordField = !!document.querySelector('input[type="password"]');
+		const isLoginTitle = !!(title.match(/log.?in|sign.?in/) || document.querySelector('h1, h2')?.textContent?.toLowerCase().match(/sign.?in|log.?in/));
+		const hasLogin = hasPasswordField || (isLoginTitle && inputs <= 5);
+
+		// Reviews: require ACTUAL review DOM structure, not just text mentions
+		// This prevents false positives on GitHub (★ stars), Reddit (ratings), Wikipedia
+		const hasReviewElements = !!document.querySelector(
+			'[data-hook*="review"], [class*="customer-review"], [class*="user-review"], ' +
+			'[class*="ReviewCard"], [class*="reviewText"], [class*="review-content"], ' +
+			'[id*="customer_review"], [id*="reviewsMedley"], [class*="review-rating"]'
+		);
+		const hasReviews = hasReviewElements;
+
+		const hasPagination = !!document.querySelector(
+			'[class*="pagination"], [class*="pager"], nav[aria-label*="pagination" i], ' +
+			'a[aria-label*="next" i], a[aria-label*="Next" i], ' +
+			'[class*="s-pagination"], a.morelink'
+		);
+		const hasVideo = !!document.querySelector('video, iframe[src*="youtube"], iframe[src*="vimeo"], ytd-video-renderer, [class*="video-player"]');
+		const hasCart = !!(lowerHTML.match(/add.?to.?cart|buy.?now|add.?to.?bag/) && document.querySelector('button, [role="button"]'));
+
+		// Page type detection — ordered by specificity (most specific first)
+		let pageType = 'unknown';
+
+		// 1. Blank pages
+		if (url === 'about:blank' || url.startsWith('chrome://') || url.startsWith('data:')) {
+			pageType = 'blank';
+		}
+		// 2. Login/signup pages (SPA: works for Twitter, LinkedIn, Facebook etc)
+		else if (isLoginTitle && text.length < 5000) {
+			pageType = 'login_page';
+		}
+		else if (hasPasswordField && forms > 0 && text.length < 5000) {
+			pageType = 'login_page';
+		}
+		// 3. Search results
+		else if (url.includes('/search') || url.match(/[?&](q|k|query|keyword)=/) || title.includes('search results')) {
+			pageType = 'search_results';
+		}
+		// 4. Product pages (e-commerce)
+		else if (hasCart && (hasReviews || lowerHTML.match(/price|mrp|buy/))) {
+			pageType = 'product_page';
+		}
+		// 5. Social media feeds (BEFORE article — Reddit/YouTube have <article> tags)
+		else if (url.includes('reddit.com') || url.includes('twitter.com') || url.includes('x.com') ||
+				 url.includes('facebook.com') || url.includes('instagram.com')) {
+			pageType = hasLogin ? 'login_page' : 'social_feed';
+		}
+		// 6. Known platforms
+		else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+			pageType = hasLogin ? 'login_page' : 'video_platform';
+		}
+		else if (url.includes('github.com')) {
+			pageType = 'code_repository';
+		}
+		else if (url.includes('stackoverflow.com') || url.includes('stackexchange.com')) {
+			pageType = url.match(/\/questions\/\d+/) ? 'qa_page' : 'listing_page';
+		}
+		// 7. Articles (long-form content — Wikipedia, blogs, news)
+		else if (url.match(/\/(article|blog|post|news|wiki)\//i)) {
+			pageType = 'article';
+		}
+		else if (document.querySelector('[class*="article-body"], [class*="post-content"], [class*="mw-parser-output"]')) {
+			pageType = 'article';
+		}
+		else if (text.length > 5000 && links < text.length / 50) {
+			pageType = 'article';
+		}
+		// 8. Review pages (dedicated review sections)
+		else if (hasReviews && !hasCart) {
+			pageType = 'review_page';
+		}
+		// 9. Form-heavy pages (require >2 forms to avoid cookie consent false positives)
+		else if (forms > 2 && inputs > 5) {
+			pageType = 'form_page';
+		}
+		// 10. Listing pages (many links, content-rich)
+		else if (links > 15) {
+			pageType = 'listing_page';
+		}
+		// 11. General fallback
+		else {
+			pageType = 'general';
+		}
 
 		// Get main headings
 		const headings = [];
