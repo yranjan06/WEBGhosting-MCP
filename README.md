@@ -37,7 +37,7 @@ Navigate pages. Click buttons. Fill forms. Extract structured data. All through 
 
 Built in Go and fully compliant with the Model Context Protocol, Go-WebMCP works seamlessly with LLMs, AI agents, and IDEs like Cursor, with zero setup friction.
 
-**This is not a demo. This is infrastructure for autonomous agents.**
+
 
 Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.md)**
 
@@ -66,16 +66,43 @@ make install-deps
 make build
 ```
 
-Add to your IDE's MCP config (`mcp.json`):
+### 🔌 IDE Integration Setup
+
+**For VS Code (GitHub Copilot Chat):**
+1. Create a `.vscode` folder in your project root (if it doesn't exist).
+2. Inside it, create a file named `mcp.json`.
+3. Paste the following configuration, ensuring you use the **absolute path** to your binary:
+
+```json
+{
+  "servers": {
+    "go-webmcp": {
+      "type": "stdio",
+      "command": "/absolute/path/to/GO-WebMcp/webmcp",
+      "args": [],
+      "env": {
+        "AI_API_KEY": "your-api-key",
+        "AI_MODEL": "gpt-4o"
+      }
+    }
+  }
+}
+```
+4. Restart your VS Code window (`Developer: Reload Window`).
+5. Open Copilot Chat, select "Agent" mode, and start giving prompts!
+
+**For Cursor, Roo Code, or Claude Desktop:**
+Open your MCP configuration file (e.g., `mcp.json` or `claude_desktop_config.json`) and add the server:
 
 ```json
 {
   "mcpServers": {
     "go-webmcp": {
-      "command": "/absolute/path/to/webmcp",
+      "command": "/absolute/path/to/GO-WebMcp/webmcp",
       "env": {
         "AI_API_KEY": "your-api-key",
-        "AI_MODEL": "gpt-4o"
+        "AI_BASE_URL": "https://api.openai.com/v1", 
+        "AI_MODEL": "gpt-4o" 
       }
     }
   }
