@@ -1,6 +1,6 @@
 # Binaries
 webmcp
-server
+/server
 probe_sse
 *.exe
 *.out
