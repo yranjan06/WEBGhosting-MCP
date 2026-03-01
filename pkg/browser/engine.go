@@ -408,6 +408,15 @@ func (e *Engine) Page() (playwright.Page, error) {
 	return page, nil
 }
 
+// GetBrowserInstances returns the underlying Playwright and Browser objects
+// for use in isolated parallel context creation.
+func (e *Engine) GetBrowserInstances() (*playwright.Playwright, playwright.Browser, error) {
+	if err := e.EnsureInitialized(); err != nil {
+		return nil, nil, err
+	}
+	return e.pw, e.browser, nil
+}
+
 func (e *Engine) SetDialogAction(action string) {
 	e.logsMu.Lock()
 	defer e.logsMu.Unlock()
@@ -733,4 +742,45 @@ func (e *Engine) ClearNetworkRequests() {
 	e.netMu.Lock()
 	defer e.netMu.Unlock()
 	e.networkRequests = make([]NetworkRequest, 0)
+}
+
+// ─── Screenshot ───
+
+// Screenshot captures the current page as base64-encoded PNG.
+func (e *Engine) Screenshot() (string, error) {
+	if err := e.EnsureInitialized(); err != nil {
+		return "", err
+	}
+	page := e.activePage()
+	if page == nil {
+		return "", fmt.Errorf("no active tab")
+	}
+	data, err := page.Screenshot(playwright.PageScreenshotOptions{
+		FullPage: playwright.Bool(false),
+	})
+	if err != nil {
+		return "", fmt.Errorf("screenshot failed: %w", err)
+	}
+	encoded := base64Encode(data)
+	return encoded, nil
+}
+
+func base64Encode(data []byte) string {
+	const b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	var result []byte
+	for i := 0; i < len(data); i += 3 {
+		var b uint32
+		remaining := len(data) - i
+		if remaining >= 3 {
+			b = uint32(data[i])<<16 | uint32(data[i+1])<<8 | uint32(data[i+2])
+			result = append(result, b64[(b>>18)&0x3F], b64[(b>>12)&0x3F], b64[(b>>6)&0x3F], b64[b&0x3F])
+		} else if remaining == 2 {
+			b = uint32(data[i])<<16 | uint32(data[i+1])<<8
+			result = append(result, b64[(b>>18)&0x3F], b64[(b>>12)&0x3F], b64[(b>>6)&0x3F], '=')
+		} else {
+			b = uint32(data[i]) << 16
+			result = append(result, b64[(b>>18)&0x3F], b64[(b>>12)&0x3F], '=', '=')
+		}
+	}
+	return string(result)
 }
