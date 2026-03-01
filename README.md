@@ -20,11 +20,24 @@
 
 ---
 
-**The stealthiest, most reliable MCP browser server for AI agents.** 30 tools. 22 anti-fingerprint scripts. LLM-powered extraction. Zero IDE setup hassle.
+## Demo
 
-Go-WebMCP is a production-ready **Model Context Protocol (MCP)** server built in Go. It gives LLMs, AI agents, and IDEs like Cursor a **stealth browser** they can control — navigate pages, click buttons, fill forms, extract data, and more — all through natural language.
+<!-- TODO: Add demo video/GIF here -->
+> Coming soon — a 60-second video showing Go-WebMCP in action with Cursor.
 
-> **30 MCP tools** · **22 stealth scripts** · **Zero-config IDE integration** · **Plugin system** · **Works with any LLM**
+---
+
+Most AI agents can think. Very few can actually browse.
+
+**Go-WebMCP changes that.**
+
+It is the stealthiest and most reliable MCP browser server for AI agents, built for real production use. With 30 powerful tools, 22 anti-fingerprint scripts, and LLM-powered extraction, it gives AI agents a browser they can truly control.
+
+Navigate pages. Click buttons. Fill forms. Extract structured data. All through natural language.
+
+Built in Go and fully compliant with the Model Context Protocol, Go-WebMCP works seamlessly with LLMs, AI agents, and IDEs like Cursor, with zero setup friction.
+
+**This is not a demo. This is infrastructure for autonomous agents.**
 
 Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.md)**
 
@@ -128,10 +141,7 @@ export AI_API_KEY="ollama" AI_BASE_URL="http://localhost:11434/v1" AI_MODEL="lla
 
 **Utilities** — `wait_for_selector`, `wait_for_load_state`, `configure_dialog`, `get_status`, `get_console_logs`, `get_network_requests`, `clear_network_requests`
 
-## Demo
 
-<!-- TODO: Add demo video/GIF here -->
-> Coming soon — a 60-second video showing Go-WebMCP in action with Cursor.
 
 ## License
 
