@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Go-WebMCP</h1>
+  <h1 align="center">GhostMCP</h1>
   <p align="center">
     <strong>Intelligent Stealth Browser &bull; MCP Server &bull; Built for AI Agents</strong>
   </p>
