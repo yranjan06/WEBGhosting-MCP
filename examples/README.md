@@ -1,12 +1,12 @@
-# Go-WebMCP Examples
+# GhostMCP Examples
 
-Ready-to-run scripts demonstrating Go-WebMCP's capabilities. All scripts use the shared [`client.py`](client.py) MCP client.
+Ready-to-run scripts demonstrating GhostMCP's capabilities. All scripts use the shared [`client.py`](client.py) MCP client.
 
 ## Prerequisites
 
 ```bash
 # Build the server
-cd GO-WebMcp
+cd GhostMCP
 make build
 
 # Set your API key (required for AI-powered tools)
@@ -44,12 +44,12 @@ python3 examples/e2e_amazon_flipkart.py
 
 ## Shared Client (`client.py`)
 
-All scripts use the `GoWebMCPClient` class:
+All scripts use the `GhostMCPClient` class:
 
 ```python
-from examples.client import GoWebMCPClient
+from examples.client import GhostMCPClient
 
-client = GoWebMCPClient()
+client = GhostMCPClient()
 client.call("browse", {"url": "https://example.com"})
 data = client.call("extract", {"schema": {...}})
 client.close()

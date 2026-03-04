@@ -4,11 +4,11 @@
     <strong>Intelligent Stealth Browser &bull; MCP Server &bull; Built for AI Agents</strong>
   </p>
   <p align="center">
-    <a href="https://github.com/yranjan06/GO-WebMcp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+    <a href="https://github.com/yranjan06/GhostMCP/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
     <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go" alt="Go Version"></a>
-    <a href="https://github.com/yranjan06/GO-WebMcp/blob/main/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
-    <a href="https://github.com/yranjan06/GO-WebMcp/issues"><img src="https://img.shields.io/github/issues/yranjan06/GO-WebMcp" alt="Issues"></a>
-    <a href="https://github.com/yranjan06/GO-WebMcp/stargazers"><img src="https://img.shields.io/github/stars/yranjan06/GO-WebMcp?style=social" alt="Stars"></a>
+    <a href="https://github.com/yranjan06/GhostMCP/blob/main/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
+    <a href="https://github.com/yranjan06/GhostMCP/issues"><img src="https://img.shields.io/github/issues/yranjan06/GhostMCP" alt="Issues"></a>
+    <a href="https://github.com/yranjan06/GhostMCP/stargazers"><img src="https://img.shields.io/github/stars/yranjan06/GhostMCP?style=social" alt="Stars"></a>
   </p>
   <p align="center">
     <a href="#quick-start">Quick Start</a> •
@@ -23,19 +23,19 @@
 ## Demo
 
 <!-- TODO: Add demo video/GIF here -->
-> Coming soon — a 60-second video showing Go-WebMCP in action with Cursor.
+> Coming soon — a 60-second video showing GhostMCP in action with Cursor.
 
 ---
 
 Most AI agents can think. Very few can actually browse.
 
-**Go-WebMCP changes that.**
+**GhostMCP changes that.**
 
 It is the stealthiest and most reliable MCP browser server for AI agents, built for real production use. With 30 powerful tools, 22 anti-fingerprint scripts, and LLM-powered extraction, it gives AI agents a browser they can truly control.
 
 Navigate pages. Click buttons. Fill forms. Extract structured data. All through natural language.
 
-Built in Go and fully compliant with the Model Context Protocol, Go-WebMCP works seamlessly with LLMs, AI agents, and IDEs like Cursor, with zero setup friction.
+Built in Go and fully compliant with the Model Context Protocol, GhostMCP works seamlessly with LLMs, AI agents, and IDEs like Cursor, with zero setup friction.
 
 
 
@@ -60,8 +60,8 @@ Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.
 ## Quick Start
 
 ```bash
-git clone https://github.com/yranjan06/GO-WebMcp.git
-cd GO-WebMcp
+git clone https://github.com/yranjan06/GhostMCP.git
+cd GhostMCP
 make install-deps
 make build
 ```
@@ -76,9 +76,9 @@ make build
 ```json
 {
   "servers": {
-    "go-webmcp": {
+    "ghostmcp": {
       "type": "stdio",
-      "command": "/absolute/path/to/GO-WebMcp/webmcp",
+      "command": "/absolute/path/to/GhostMCP/webmcp",
       "args": [],
       "env": {
         "AI_API_KEY": "your-api-key",
@@ -97,8 +97,8 @@ Open your MCP configuration file (e.g., `mcp.json` or `claude_desktop_config.jso
 ```json
 {
   "mcpServers": {
-    "go-webmcp": {
-      "command": "/absolute/path/to/GO-WebMcp/webmcp",
+    "ghostmcp": {
+      "command": "/absolute/path/to/GhostMCP/webmcp",
       "env": {
         "AI_API_KEY": "your-api-key",
         "AI_BASE_URL": "https://api.openai.com/v1", 
@@ -113,7 +113,7 @@ Or run with Docker:
 
 ```bash
 make docker
-docker run -p 8080:8080 -e AI_API_KEY="your-key" -e BROWSER_HEADLESS="true" go-webmcp --port=8080
+docker run -p 8080:8080 -e AI_API_KEY="your-key" -e BROWSER_HEADLESS="true" ghostmcp --port=8080
 ```
 
 ### Try Without an API Key
@@ -178,13 +178,13 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## Star History
 
-If you find Go-WebMCP useful, please give it a star — it helps the project grow!
+If you find GhostMCP useful, please give it a star — it helps the project grow!
 
-<a href="https://star-history.com/#yranjan06/GO-WebMcp&Date">
+<a href="https://star-history.com/#yranjan06/GhostMCP&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yranjan06/GO-WebMcp&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yranjan06/GO-WebMcp&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yranjan06/GO-WebMcp&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yranjan06/GhostMCP&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yranjan06/GhostMCP&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yranjan06/GhostMCP&type=Date" />
   </picture>
 </a>
 
@@ -192,7 +192,7 @@ If you find Go-WebMCP useful, please give it a star — it helps the project gro
 
 <p align="center">
   Built with ❤️ for the AI community<br/>
-  <a href="https://github.com/yranjan06/GO-WebMcp">GitHub</a> •
-  <a href="https://github.com/yranjan06/GO-WebMcp/issues">Issues</a> •
+  <a href="https://github.com/yranjan06/GhostMCP">GitHub</a> •
+  <a href="https://github.com/yranjan06/GhostMCP/issues">Issues</a> •
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>

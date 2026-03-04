@@ -72,7 +72,7 @@ func (a *Agent) callExtractionLLM(actualModel string, messages []map[string]inte
 		"model":       actualModel,
 		"messages":    messages,
 		"temperature": temperature,
-		"max_tokens":  8192,
+		"max_tokens":  2500,
 	}
 
 	if responseFormat != nil {

@@ -24,7 +24,7 @@ func main() {
 	humanize := flag.Bool("humanize", true, "Enable human-like mouse movements, scrolling, and typing delays to bypass anti-bot detection")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "%s%sGO-WebMcp%s v%s — AI-powered stealth browser for LLM agents\n\n", ColorBold, ColorCyan, ColorReset, Version)
+		fmt.Fprintf(os.Stderr, "%s%sGhostMCP%s v%s — AI-powered stealth browser for LLM agents\n\n", ColorBold, ColorCyan, ColorReset, Version)
 		fmt.Fprintln(os.Stderr, "Usage:")
 		fmt.Fprintln(os.Stderr, "  webmcp                          Start in stdio mode (for IDE integration)")
 		fmt.Fprintln(os.Stderr, "  webmcp --port=8080              Start in HTTP/SSE mode")
@@ -49,22 +49,23 @@ func main() {
 
 	// ─── Logger Setup ───
 	log.SetFlags(log.Ltime)
-	log.SetPrefix(ColorDim + "[webmcp] " + ColorReset)
+	log.SetPrefix(ColorDim + "[ghostmcp] " + ColorReset)
 
 	// ─── Banner ───
 	fmt.Fprintf(os.Stderr, "\n%s", ColorCyan)
-	fmt.Fprintln(os.Stderr, `   ______           _       __     __    __  ___  __________`)
-	fmt.Fprintln(os.Stderr, `  / ____/___       | |     / /__  / /_  /  |/  / / ____/ __ \`)
-	fmt.Fprintln(os.Stderr, ` / / __/ __ \______| | /| / / _ \/ __ \/ /|_/ / / /   / /_/ /`)
-	fmt.Fprintln(os.Stderr, `/ /_/ / /_/ /_____/| |/ |/ /  __/ /_/ / /  / / / /___/ ____/`)
-	fmt.Fprintln(os.Stderr, `\____/\____/       |__/|__/\___/_.___/_/  /_/  \____/_/`)
+	fmt.Fprintln(os.Stderr, `    ______  __               __  __  ___ ________ `)
+	fmt.Fprintln(os.Stderr, `   / ____/ / /_  ____  _____/ /_/  |/  // ____/ /_`)
+	fmt.Fprintln(os.Stderr, `  / / __  / __ \/ __ \/ ___/ __/ /|_/ // /   / __ \`)
+	fmt.Fprintln(os.Stderr, ` / /_/ / / / / / /_/ (__  ) /_/ /  / // /___/ /_/ /`)
+	fmt.Fprintln(os.Stderr, ` \____/ /_/ /_/\____/____/\__/_/  /_/ \____/ .___/`)
+	fmt.Fprintln(os.Stderr, `                                         /_/      `)
 	fmt.Fprintf(os.Stderr, "%s\n", ColorReset)
 	fmt.Fprintf(os.Stderr, "  %sType: Local Agentic Browser  │  Mode: Stealth  │  v%s%s\n", ColorDim, Version, ColorReset)
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "  %sQuick Start:%s\n", ColorBold, ColorReset)
 	fmt.Fprintf(os.Stderr, "  %sAdd to your IDE's MCP config (settings.json or mcp.json):%s\n", ColorDim, ColorReset)
 	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintf(os.Stderr, "    %s{\"mcpServers\": {\"go-webmcp\": {\"command\": \"/path/to/webmcp\"}}}%s\n", ColorCyan, ColorReset)
+	fmt.Fprintf(os.Stderr, "    %s{\"mcpServers\": {\"ghostmcp\": {\"command\": \"/path/to/webmcp\"}}}%s\n", ColorCyan, ColorReset)
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "  %sFor AI-driven click/type, set: export AI_API_KEY=sk-...%s\n", ColorDim, ColorReset)
 	fmt.Fprintf(os.Stderr, "  %sCustom LLM: export AI_BASE_URL=http://localhost:11434/v1%s\n", ColorDim, ColorReset)

@@ -5,7 +5,7 @@ import sys, time, json
 sys.path.insert(0, '.')
 from examples.client import *
 
-client = GoWebMCPClient()
+client = GhostMCPClient()
 
 try:
     print(f"\n{CYAN}{'='*50}\n  LinkedIn: Data Engineering Job Extraction\n{'='*50}{RESET}\n")
