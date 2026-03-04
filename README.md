@@ -66,7 +66,7 @@ make install-deps
 make build
 ```
 
-### 🔌 IDE Integration Setup
+### IDE Integration Setup
 
 **For VS Code (GitHub Copilot Chat):**
 1. Create a `.vscode` folder in your project root (if it doesn't exist).
