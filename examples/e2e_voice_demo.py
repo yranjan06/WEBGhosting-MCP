@@ -13,7 +13,7 @@ Execution:
  - Auto-drafts the final LinkedIn post on a digital notepad online.
 """
 
-import sys, time, json, threading
+import sys, time, json
 sys.path.insert(0, '.')
 from examples.client import *
 
@@ -142,80 +142,90 @@ try:
 
     print(f"{YELLOW}  [Action] Scrolling through the Reddit discussion...{RESET}")
     client.call("scroll", {"amount": 800})
-    cinematic_sleep(1)
-
-    print(f"{DIM}  [System] Pruning Reddit DOM to first comment and reply...{RESET}")
-    client.call("execute_js", {"script": """
-        const allComments = Array.from(document.querySelectorAll('shreddit-comment'));
-        if (allComments.length > 0) {
-            let keptTopLevel = false;
-            let keptReply = false;
-            allComments.forEach(comment => {
-                const depth = parseInt(comment.getAttribute('depth') || '0');
-                if (depth === 0 && !keptTopLevel) {
-                    keptTopLevel = true;
-                } else if (depth === 1 && keptTopLevel && !keptReply) {
-                    keptReply = true;
-                } else {
-                    comment.remove();
-                }
-            });
-        }
-    """})
-    client.call("scroll", {"amount": 800})
     cinematic_sleep(2)
 
     # ---------------------------------------------------------
-    # Scene 3: Reddit Extraction — LLM Cognitive Task
+    # Scene 3: Reddit Extraction — JS-based (no race condition)
     # ---------------------------------------------------------
     print(f"\n{CYAN}{BOLD}[Scene 3] AI Cognition — Cross-Referencing Platforms{RESET}")
-    print(f"{YELLOW}  [Cognitive] Deploying LLM to extract sentiment...{RESET}")
+    print(f"{YELLOW}  [Cognitive] Reading Reddit comments directly...{RESET}")
 
-    schema_reddit = {
-        "summary": "string"
-    }
+    # Extract first comment + first reply via JS — works on BOTH new Reddit (shreddit-comment) and old Reddit
+    reddit_data_json = client.call("execute_js", {"script": """
+        (() => {
+            let post = '', firstComment = '', firstReply = '';
+            
+            // Try New Reddit (shreddit-comment with depth attribute)
+            const comments = document.querySelectorAll('shreddit-comment');
+            if (comments.length > 0) {
+                post = document.querySelector('h1')?.innerText || document.title || '';
+                for (const c of comments) {
+                    const depth = parseInt(c.getAttribute('depth') || '0');
+                    const text = c.querySelector('div[slot="comment"]')?.innerText?.trim() || '';
+                    const author = c.getAttribute('author') || 'unknown';
+                    if (depth === 0 && !firstComment) {
+                        firstComment = author + ': ' + text;
+                    } else if (depth === 1 && firstComment && !firstReply) {
+                        firstReply = author + ': ' + text;
+                        break;
+                    }
+                }
+            }
+            
+            // Fallback: Old Reddit or non-standard layout
+            if (!firstComment) {
+                post = document.querySelector('h1, .title a')?.innerText || document.title || '';
+                const commentDivs = document.querySelectorAll('.comment .md, .Comment .RichTextJSON-root, [data-testid="comment"] p');
+                if (commentDivs.length > 0) firstComment = commentDivs[0]?.innerText?.trim() || '';
+                if (commentDivs.length > 1) firstReply = commentDivs[1]?.innerText?.trim() || '';
+            }
+            
+            return JSON.stringify({
+                post: post.substring(0, 200),
+                comment: firstComment.substring(0, 500),
+                reply: firstReply.substring(0, 500),
+                source: comments.length > 0 ? 'new_reddit' : 'old_reddit'
+            });
+        })()
+    """})
 
-    extracted_result = {}
+    # Parse the JS result
+    reddit_comment = ""
+    reddit_reply = ""
+    reddit_source = "unknown"
+    try:
+        reddit_data = json.loads(reddit_data_json)
+        reddit_comment = reddit_data.get("comment", "")
+        reddit_reply = reddit_data.get("reply", "")
+        reddit_source = reddit_data.get("source", "unknown")
+        print(f"  {GREEN}Reddit data captured ({reddit_source}){RESET}")
+        if reddit_comment:
+            print(f"  {DIM}First comment: {reddit_comment[:80]}...{RESET}")
+        if reddit_reply:
+            print(f"  {DIM}First reply: {reddit_reply[:80]}...{RESET}")
+    except (json.JSONDecodeError, TypeError):
+        print(f"  {DIM}Reddit comments not available, using fallback.{RESET}")
+        reddit_comment = "Users discussed the topic with mixed opinions."
 
-    def background_extract():
-        try:
-            raw = client.call("extract", {
-                "schema": schema_reddit,
-                "prompt": "Read the top comments and provide a single concise summary paragraph of the overall sentiment and key takeaways."
-            })
-            data = json.loads(raw)
-            extracted_result["summary"] = data.get("summary", "Mixed opinions with focus on privacy.")
-            extracted_result["sentiment"] = "Analysis Complete"
-        except Exception as e:
-            extracted_result["summary"] = f"Extraction completed: {e}"
-            extracted_result["sentiment"] = "Analysis complete"
+    # Build summary from extracted data (no LLM needed for this — faster + reliable)
+    if reddit_comment:
+        summary = reddit_comment
+        if reddit_reply:
+            summary += " | Reply: " + reddit_reply
+    else:
+        summary = "Community discussed the topic with interest and mixed perspectives."
+    sentiment = "Analysis Complete"
 
-    extract_thread = threading.Thread(target=background_extract)
-    extract_thread.start()
-
-    # Foreground: Cinematic Tab Switching
+    # Cinematic tab switching (visual flair only — data already captured)
     print(f"{YELLOW}  [Action] Cross-referencing Hacker News and Reddit...{RESET}")
+    client.call("switch_tab", {"index": 0})
+    client.call("scroll", {"amount": -400})
+    cinematic_sleep(2)
+    client.call("switch_tab", {"index": 1})
+    client.call("scroll", {"amount": 500})
+    cinematic_sleep(2)
 
-    loops = 0
-    while extract_thread.is_alive() and loops < 3:
-        client.call("switch_tab", {"index": 0})
-        client.call("scroll", {"amount": -400})
-        cinematic_sleep(2)
-
-        if not extract_thread.is_alive(): break
-
-        client.call("switch_tab", {"index": 1})
-        client.call("scroll", {"amount": 500})
-        cinematic_sleep(3)
-
-        loops += 1
-
-    extract_thread.join(timeout=15)
-
-    summary = extracted_result.get("summary", "Reddit users found the news engaging and had mixed opinions.")
-    sentiment = extracted_result.get("sentiment", "Neutral to Positive")
-
-    print(f"  {GREEN}LLM Extraction Complete.{RESET}")
+    print(f"  {GREEN}Extraction Complete.{RESET}")
     print(f"  {DIM}Sentiment: {sentiment}{RESET}\n")
     cinematic_sleep(2)
 
