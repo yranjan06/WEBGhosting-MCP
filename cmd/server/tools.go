@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	mcp_golang "github.com/metoro-io/mcp-golang"
@@ -107,6 +110,16 @@ type GetNetworkRequestsArgs struct{}
 type ClearNetworkRequestsArgs struct{}
 
 type ScreenshotArgs struct{}
+
+type RunRecipeArgs struct {
+	Name string `json:"name" jsonschema:"required,description=Name of the recipe file to run (e.g. hn_reddit_linkedin.json)"`
+}
+
+type RunTaskArgs struct {
+	Command string `json:"command" jsonschema:"required,description=Natural language description of the browser task to perform (e.g. Go to Hacker News and find the top story)"`
+}
+
+type ListRecipesArgs struct{}
 
 type FormField struct {
 	Selector string `json:"selector" jsonschema:"required,description=CSS selector of the input element"`
@@ -565,6 +578,38 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		log.Printf("%s[SCREENSHOT]%s Captured (%d bytes base64)", ColorGreen, ColorReset, len(data))
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Screenshot captured (%d KB base64). Data:\n%s", len(data)/1024, data))), nil
 	}))
+
+	// ─── Orchestrator: run_recipe ───
+	must(server.RegisterTool("run_recipe", "Execute a pre-built recipe file from the orchestrator/recipes/ folder. Recipes are JSON task sequences that automate multi-step browser workflows (e.g., scraping HN, Reddit, and drafting LinkedIn posts). Use list_recipes first to see available recipes.", func(args RunRecipeArgs) (*mcp_golang.ToolResponse, error) {
+		log.Printf("%s[RECIPE]%s Running recipe: %s", ColorBlue, ColorReset, args.Name)
+		out, err := runOrchestratorCommand([]string{args.Name})
+		if err != nil {
+			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Recipe failed: %v\nOutput:\n%s", err, out))), nil
+		}
+		log.Printf("%s[RECIPE]%s Recipe completed successfully", ColorGreen, ColorReset)
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(out)), nil
+	}))
+
+	// ─── Orchestrator: run_task ───
+	must(server.RegisterTool("run_task", "Execute a browser automation task described in natural language. The orchestrator will auto-generate a JSON recipe using the LLM, execute it, and clean up. Example: 'Go to Hacker News and find the top story title'. Requires AI_API_KEY to be set.", func(args RunTaskArgs) (*mcp_golang.ToolResponse, error) {
+		log.Printf("%s[TASK]%s Running task: %s", ColorBlue, ColorReset, args.Command)
+		out, err := runOrchestratorCommand([]string{"--run", args.Command})
+		if err != nil {
+			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Task failed: %v\nOutput:\n%s", err, out))), nil
+		}
+		log.Printf("%s[TASK]%s Task completed successfully", ColorGreen, ColorReset)
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(out)), nil
+	}))
+
+	// ─── Orchestrator: list_recipes ───
+	must(server.RegisterTool("list_recipes", "List all available pre-built recipes in the orchestrator/recipes/ folder. Returns recipe names, descriptions, and step counts.", func(args ListRecipesArgs) (*mcp_golang.ToolResponse, error) {
+		log.Printf("%s[RECIPE]%s Listing available recipes", ColorBlue, ColorReset)
+		out, err := runOrchestratorCommand([]string{"--list"})
+		if err != nil {
+			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Failed: %v\nOutput:\n%s", err, out))), nil
+		}
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(out)), nil
+	}))
 }
 
 // must panics if tool registration fails.
@@ -572,4 +617,45 @@ func must(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// runOrchestratorCommand runs the Python orchestrator as a subprocess.
+func runOrchestratorCommand(args []string) (string, error) {
+	// Find the orchestrator directory relative to the binary
+	exePath, err := os.Executable()
+	if err != nil {
+		exePath = "."
+	}
+	projectRoot := filepath.Dir(filepath.Dir(filepath.Dir(exePath)))
+
+	// Try common locations for the orchestrator
+	candidates := []string{
+		filepath.Join(projectRoot, "orchestrator"),
+		"orchestrator",
+		filepath.Join(".", "orchestrator"),
+	}
+
+	var orchDir string
+	for _, c := range candidates {
+		if _, err := os.Stat(filepath.Join(c, "orchestrator.py")); err == nil {
+			orchDir = filepath.Dir(c)
+			break
+		}
+	}
+	if orchDir == "" {
+		// Default to current working directory
+		orchDir, _ = os.Getwd()
+	}
+
+	cmdArgs := append([]string{"-m", "orchestrator.orchestrator"}, args...)
+	cmd := exec.Command("python3", cmdArgs...)
+	cmd.Dir = orchDir
+
+	// Pass through relevant environment variables
+	cmd.Env = append(os.Environ())
+
+	log.Printf("%s[ORCHESTRATOR]%s Running: python3 %s (cwd: %s)", ColorBlue, ColorReset, strings.Join(cmdArgs, " "), orchDir)
+
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }
