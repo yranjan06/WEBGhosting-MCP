@@ -1,0 +1,24 @@
+{
+    "stackoverflow.question_title": {
+        "selector": "#question-header h1 a",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "stackoverflow.question_body": {
+        "selector": "#question .s-prose",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "stackoverflow.top_answer": {
+        "selector": "#answers .answer:first-of-type .s-prose",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "stackoverflow.search_box": {
+        "selector": "input[name='q'].s-input",
+        "fallback": "input[placeholder*='Search']"
+    }
+}

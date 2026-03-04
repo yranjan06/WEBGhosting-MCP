@@ -1,0 +1,19 @@
+{
+    "naukri.search_box": {
+        "selector": "input.suggestor-input",
+        "fallback": "input[placeholder*='Search']"
+    },
+    "naukri.first_job": {
+        "selector": "article.jobTuple:first-of-type a.title",
+        "fallback": "a[class*='jobTitle']",
+        "extract": [
+            "innerText",
+            "href"
+        ]
+    },
+    "notepad.textarea": {
+        "selector": "textarea#area",
+        "fallback": "textarea",
+        "notes": "rapidtables.com/tools/notepad.html"
+    }
+}

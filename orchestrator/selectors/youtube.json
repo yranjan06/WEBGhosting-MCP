@@ -1,0 +1,40 @@
+{
+    "youtube.video_title": {
+        "selector": "h1.ytd-watch-metadata yt-formatted-string",
+        "fallback": "#title h1",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "youtube.channel_name": {
+        "selector": "#channel-name yt-formatted-string a",
+        "fallback": "ytd-channel-name a",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "youtube.view_count": {
+        "selector": "ytd-watch-info-text span.bold:first-of-type",
+        "fallback": "#info-strings yt-formatted-string",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "youtube.search_box": {
+        "selector": "input#search",
+        "fallback": "input[name='search_query']"
+    },
+    "youtube.first_result": {
+        "selector": "ytd-video-renderer:first-of-type a#video-title",
+        "extract": [
+            "innerText",
+            "href"
+        ]
+    },
+    "youtube.first_comment": {
+        "selector": "ytd-comment-thread-renderer:first-of-type #content-text",
+        "extract": [
+            "innerText"
+        ]
+    }
+}

@@ -1,0 +1,43 @@
+{
+    "amazon.product_title": {
+        "selector": "#productTitle",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "amazon.product_price": {
+        "selector": "span.a-price-whole",
+        "fallback": "#priceblock_ourprice, #priceblock_dealprice, .a-price .a-offscreen",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "amazon.product_rating": {
+        "selector": "#acrPopover span.a-size-base.a-color-base",
+        "fallback": "span[data-hook='rating-out-of-text']",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "amazon.product_image": {
+        "selector": "#landingImage",
+        "extract": [
+            "src"
+        ]
+    },
+    "amazon.search_box": {
+        "selector": "#twotabsearchtextbox",
+        "fallback": "input[name='field-keywords']"
+    },
+    "amazon.first_search_result": {
+        "selector": "div[data-component-type='s-search-result']:first-of-type h2 a",
+        "extract": [
+            "innerText",
+            "href"
+        ]
+    },
+    "amazon.add_to_cart": {
+        "selector": "#add-to-cart-button",
+        "fallback": "input[name='submit.add-to-cart']"
+    }
+}

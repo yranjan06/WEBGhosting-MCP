@@ -1,0 +1,26 @@
+{
+    "wikipedia.article_title": {
+        "selector": "#firstHeading span",
+        "fallback": "#firstHeading",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "wikipedia.article_intro": {
+        "selector": "#mw-content-text .mw-parser-output > p:not(.mw-empty-elt)",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "First non-empty paragraph is usually the intro"
+    },
+    "wikipedia.search_box": {
+        "selector": "#searchInput",
+        "fallback": "input[name='search']"
+    },
+    "wikipedia.infobox": {
+        "selector": "table.infobox",
+        "extract": [
+            "innerText"
+        ]
+    }
+}

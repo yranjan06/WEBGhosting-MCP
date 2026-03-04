@@ -1,0 +1,31 @@
+{
+    "github.repo_name": {
+        "selector": "strong[itemprop='name'] a, .AppHeader-context-item-label",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "github.repo_description": {
+        "selector": "p.f4.my-3, [itemprop='about']",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "github.repo_stars": {
+        "selector": "#repo-stars-counter-star",
+        "fallback": "a[href*='stargazers'] span",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "github.search_box": {
+        "selector": "input.header-search-input, input[name='query-builder-test']",
+        "fallback": "input[placeholder*='Search']"
+    },
+    "github.file_content": {
+        "selector": "div[itemprop='text'], .react-code-text",
+        "extract": [
+            "innerText"
+        ]
+    }
+}

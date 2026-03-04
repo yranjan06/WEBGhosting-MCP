@@ -1,0 +1,26 @@
+{
+    "twitter.tweet_text": {
+        "selector": "article[data-testid='tweet']:first-of-type div[data-testid='tweetText']",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "twitter.tweet_author": {
+        "selector": "article[data-testid='tweet']:first-of-type div[data-testid='User-Name']",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "twitter.search_box": {
+        "selector": "input[data-testid='SearchBox_Search_Input']",
+        "fallback": "input[placeholder*='Search']"
+    },
+    "twitter.compose_box": {
+        "selector": "div[data-testid='tweetTextarea_0']",
+        "fallback": "div[role='textbox']"
+    },
+    "twitter.tweet_button": {
+        "selector": "button[data-testid='tweetButtonInline']",
+        "fallback": "div[data-testid='tweetButton']"
+    }
+}

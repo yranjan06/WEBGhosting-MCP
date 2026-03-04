@@ -1,0 +1,23 @@
+{
+    "linkedin.post_box": {
+        "selector": "div.ql-editor[data-placeholder]",
+        "fallback": "div[role='textbox']",
+        "notes": "LinkedIn's post composer uses Quill editor"
+    },
+    "linkedin.feed_post": {
+        "selector": "div.feed-shared-update-v2:first-of-type",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "linkedin.post_author": {
+        "selector": "div.feed-shared-update-v2:first-of-type span.feed-shared-actor__name",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "linkedin.search_box": {
+        "selector": "input.search-global-typeahead__input",
+        "fallback": "input[placeholder*='Search']"
+    }
+}

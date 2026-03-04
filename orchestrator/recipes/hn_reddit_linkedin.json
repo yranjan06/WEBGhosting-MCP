@@ -1,0 +1,125 @@
+{
+    "name": "HN Top Story to Reddit to LinkedIn Draft",
+    "description": "Find today's top HN story, read Reddit discussion, draft LinkedIn post",
+    "steps": [
+        {
+            "id": 1,
+            "action": "browse",
+            "url": "https://news.ycombinator.com",
+            "narrate": "Opening Hacker News..."
+        },
+        {
+            "id": 2,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 3,
+            "action": "js",
+            "code": "(() => { const el = document.querySelector('tr.athing:first-of-type span.titleline > a'); const sub = document.querySelector('tr.athing:first-of-type + tr .subtext'); let cl = null; if (sub) cl = Array.from(sub.querySelectorAll('a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss')); return JSON.stringify(el ? {title: el.innerText.trim(), href: el.href, comments: cl ? cl.href : null} : {error: 'Not found'}); })()",
+            "save_as": "topic",
+            "narrate": "Identifying #1 ranked post..."
+        },
+        {
+            "id": 4,
+            "action": "js",
+            "code": "const el = Array.from(document.querySelectorAll('tr.athing:first-of-type + tr .subtext a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss')); if (el) el.click();",
+            "narrate": "Opening HN discussion..."
+        },
+        {
+            "id": 5,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 6,
+            "action": "scroll",
+            "amount": 600
+        },
+        {
+            "id": 7,
+            "action": "js",
+            "code": "(() => { const t = document.querySelector('table.comment-tree'); if (!t) return '{}'; const rows = Array.from(t.querySelectorAll('tr.comtr')); let k=0; for (let i=0; i<rows.length; i++) { const d = parseInt(rows[i].querySelector('.ind')?.getAttribute('indent')||'0'); if (d===0 && k===0) k++; else if (d>0 && k===1) k++; else if (k>=2 || (d===0 && k>0)) rows[i].remove(); } const c = document.querySelector('.commtext'); return JSON.stringify({comment: c ? c.innerText.trim().substring(0,500) : ''}); })()",
+            "save_as": "hn_comment",
+            "narrate": "Reading first HN comment..."
+        },
+        {
+            "id": 8,
+            "action": "open_tab"
+        },
+        {
+            "id": 9,
+            "action": "browse",
+            "url": "https://google.com",
+            "narrate": "Opening Google..."
+        },
+        {
+            "id": 10,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 11,
+            "action": "search",
+            "selector": "textarea#APjFqb",
+            "query": "{topic.title} site:reddit.com",
+            "narrate": "Searching Reddit for: '{topic.title}'..."
+        },
+        {
+            "id": 12,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 13,
+            "action": "js",
+            "code": "const r = Array.from(document.querySelectorAll('a')).find(a => a.href.includes('reddit.com') && a.querySelector('h3')); if (r) r.click(); else { const h = document.querySelector('h3'); if (h) h.click(); }",
+            "narrate": "Clicking top Reddit result..."
+        },
+        {
+            "id": 14,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 15,
+            "action": "scroll",
+            "amount": 800
+        },
+        {
+            "id": 16,
+            "action": "js",
+            "code": "(() => { let fc='', fr=''; const cs=document.querySelectorAll('shreddit-comment'); if(cs.length>0){for(const c of cs){const d=parseInt(c.getAttribute('depth')||'0');const t=c.querySelector('div[slot=\"comment\"]')?.innerText?.trim()||'';const a=c.getAttribute('author')||'';if(d===0&&!fc){fc=a+': '+t;}else if(d===1&&fc&&!fr){fr=a+': '+t;break;}}} if(!fc){const ds=document.querySelectorAll('.comment .md,[data-testid=\"comment\"] p');if(ds.length>0)fc=ds[0]?.innerText?.trim()||'';if(ds.length>1)fr=ds[1]?.innerText?.trim()||'';} return JSON.stringify({comment:fc.substring(0,500),reply:fr.substring(0,500),source:cs.length>0?'new_reddit':'old_reddit'}); })()",
+            "save_as": "reddit_data",
+            "narrate": "Reading Reddit comments..."
+        },
+        {
+            "id": 17,
+            "action": "open_tab"
+        },
+        {
+            "id": 18,
+            "action": "browse",
+            "url": "https://www.rapidtables.com/tools/notepad.html",
+            "narrate": "Opening digital notepad..."
+        },
+        {
+            "id": 19,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 20,
+            "action": "wait_selector",
+            "selector": "textarea#area"
+        },
+        {
+            "id": 21,
+            "action": "type_to_notepad",
+            "selector": "textarea#area",
+            "template": "Today's Top Tech Discussion\n\nThe biggest story on Hacker News today:\n\"{topic.title}\"\n\nHacker News Community:\n{hn_comment.comment}\n\nReddit Community ({reddit_data.source}):\n{reddit_data.comment}\n\nReply: {reddit_data.reply}\n\nSentiment: Mixed perspectives with strong community interest.\n\n#TechNews #Programming #Discussion",
+            "speed_ms": 15,
+            "narrate": "AI typing the LinkedIn draft..."
+        }
+    ]
+}

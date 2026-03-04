@@ -1,0 +1,14 @@
+{
+    "google.search_box": {
+        "selector": "textarea#APjFqb",
+        "fallback": "input[name='q']"
+    },
+    "google.first_result": {
+        "selector": "#search a h3",
+        "fallback": "h3"
+    },
+    "google.first_reddit_link": {
+        "script": "Array.from(document.querySelectorAll('a')).find(a => a.href.includes('reddit.com') && a.querySelector('h3'))",
+        "fallback_script": "document.querySelector('h3')"
+    }
+}

@@ -1,0 +1,36 @@
+{
+    "hn.top_post": {
+        "selector": "tr.athing:first-of-type span.titleline > a",
+        "extract": [
+            "innerText",
+            "href"
+        ],
+        "fallback": "span.titleline > a",
+        "notes": "HN layout unchanged for 15+ years, very stable"
+    },
+    "hn.comments_link": {
+        "script": "Array.from(document.querySelectorAll('tr.athing:first-of-type + tr .subtext a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss'))",
+        "extract": [
+            "href"
+        ]
+    },
+    "hn.first_comment": {
+        "selector": "table.comment-tree tr.comtr:first-of-type .commtext",
+        "extract": [
+            "innerText"
+        ],
+        "fallback": ".commtext"
+    },
+    "hn.post_score": {
+        "selector": "tr.athing:first-of-type + tr .score",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "hn.post_author": {
+        "selector": "tr.athing:first-of-type + tr .hnuser",
+        "extract": [
+            "innerText"
+        ]
+    }
+}

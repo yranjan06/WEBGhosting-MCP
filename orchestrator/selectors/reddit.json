@@ -1,0 +1,37 @@
+{
+    "reddit.first_comment": {
+        "selector": "shreddit-comment[depth='0']",
+        "text_selector": "div[slot='comment']",
+        "attrs": [
+            "author",
+            "score",
+            "thingid",
+            "permalink"
+        ],
+        "fallback": ".comment .md",
+        "notes": "New Reddit uses Web Components with depth attribute"
+    },
+    "reddit.first_reply": {
+        "selector": "shreddit-comment[depth='1']",
+        "text_selector": "div[slot='comment']",
+        "attrs": [
+            "author",
+            "score"
+        ],
+        "fallback": ".comment .comment .md"
+    },
+    "reddit.post_title": {
+        "selector": "h1",
+        "fallback": "shreddit-post [slot='title']",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "reddit.post_body": {
+        "selector": "div[slot='text-body']",
+        "fallback": ".Post .RichTextJSON-root",
+        "extract": [
+            "innerText"
+        ]
+    }
+}
