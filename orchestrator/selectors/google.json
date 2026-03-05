@@ -1,14 +1,133 @@
 {
     "google.search_box": {
         "selector": "textarea#APjFqb",
-        "fallback": "input[name='q']"
+        "fallback": "textarea[name='q']",
+        "notes": "Google switched from input to textarea in 2024"
+    },
+    "google.search_button": {
+        "selector": "input[name='btnK']",
+        "fallback": "button[type='submit']",
+        "notes": "btnK is the stable name attribute for Google Search button"
+    },
+    "google.voice_search": {
+        "selector": "div[aria-label='Search by voice']",
+        "notes": "aria-label is stable for accessibility"
+    },
+    "google.lens_search": {
+        "selector": "div[aria-label='Search by image']",
+        "notes": "Google Lens / image search"
+    },
+    "google.ai_mode": {
+        "selector": "button.plR5qb",
+        "fallback": "button[aria-label='AI Mode']",
+        "notes": "New AI Mode button on homepage"
+    },
+    "google.account_info": {
+        "selector": "a[aria-label^='Google Account']",
+        "fallback": "header a[href*='accounts.google.com']",
+        "extract": [
+            "aria-label"
+        ],
+        "notes": "Logged-in user info, aria-label contains email"
+    },
+    "google.language_links": {
+        "selector": "#SIvCob a",
+        "extract": [
+            "innerText",
+            "href"
+        ],
+        "notes": "Language option links on homepage"
+    },
+    "google.ai_overview": {
+        "selector": "div.YzCcne",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Gemini AI Overview container, not always present"
+    },
+    "google.ai_text": {
+        "selector": "div.Y3BBE",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "AI-generated answer text inside the overview"
+    },
+    "google.ai_show_more": {
+        "selector": "div[jsname='rPRdsc']",
+        "notes": "Click to expand full AI answer"
     },
     "google.first_result": {
-        "selector": "#search a h3",
-        "fallback": "h3"
+        "selector": "h3.LC20lb",
+        "fallback": "#search a h3",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "google.result_link": {
+        "selector": "a[jsname='UWckNb']",
+        "fallback": "div.g a",
+        "extract": [
+            "href"
+        ]
+    },
+    "google.result_snippet": {
+        "selector": "div.VwiC3b",
+        "fallback": "div.IsZvec",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "google.result_block": {
+        "selector": "div.tF2Cxc",
+        "fallback": "div.g",
+        "extract": [
+            "innerText"
+        ]
     },
     "google.first_reddit_link": {
-        "script": "Array.from(document.querySelectorAll('a')).find(a => a.href.includes('reddit.com') && a.querySelector('h3'))",
-        "fallback_script": "document.querySelector('h3')"
+        "script": "Array.from(document.querySelectorAll('a[jsname=\"UWckNb\"]')).find(a => a.href.includes('reddit.com'))",
+        "fallback_script": "Array.from(document.querySelectorAll('a')).find(a => a.href.includes('reddit.com') && a.querySelector('h3'))"
+    },
+    "google.next_page": {
+        "selector": "a#pnnext",
+        "fallback": "table.AaVjTc a:last-child",
+        "notes": "Pagination next button, very stable ID"
+    },
+    "google.auth_email": {
+        "selector": "input#identifierId",
+        "fallback": "input[name='identifier']",
+        "notes": "OAuth email/phone input field"
+    },
+    "google.auth_next": {
+        "selector": "#identifierNext button",
+        "notes": "Triggers password screen after email entry"
+    },
+    "google.auth_password": {
+        "selector": "input[name='Passwd']",
+        "fallback": "input[type='password']",
+        "notes": "Password field on second OAuth screen"
+    },
+    "google.auth_password_next": {
+        "selector": "#passwordNext button",
+        "notes": "Submit password button"
+    },
+    "google.auth_forgot_email": {
+        "selector": "button[jsname='Cuz2Ue']",
+        "notes": "Recovery flow trigger"
+    },
+    "google.auth_captcha_img": {
+        "selector": "img#captchaimg",
+        "notes": "Only present if Google triggers security check"
+    },
+    "google.auth_captcha_input": {
+        "selector": "input#ca",
+        "notes": "Type captcha solution here"
+    },
+    "google.auth_target_site": {
+        "selector": "button[jsname='LZaERc']",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Shows destination app (x.com, etc.) — anti-phishing check"
     }
 }

@@ -1,4 +1,8 @@
 {
+    "hn.item_container": {
+        "selector": "tr.athing",
+        "notes": "Main news row, each item has unique id attribute"
+    },
     "hn.top_post": {
         "selector": "tr.athing:first-of-type span.titleline > a",
         "extract": [
@@ -7,6 +11,28 @@
         ],
         "fallback": "span.titleline > a",
         "notes": "HN layout unchanged for 15+ years, very stable"
+    },
+    "hn.title_link": {
+        "selector": "span.titleline > a",
+        "extract": [
+            "innerText",
+            "href"
+        ],
+        "notes": "Direct source URL of the news article"
+    },
+    "hn.rank": {
+        "selector": "span.rank",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "News number (1., 2., etc.)"
+    },
+    "hn.source_site": {
+        "selector": "span.sitestr",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Source domain like github.com, apple.com"
     },
     "hn.comments_link": {
         "script": "Array.from(document.querySelectorAll('tr.athing:first-of-type + tr .subtext a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss'))",
@@ -22,15 +48,48 @@
         "fallback": ".commtext"
     },
     "hn.post_score": {
-        "selector": "tr.athing:first-of-type + tr .score",
+        "selector": "span.score",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Points count, e.g. '256 points'"
+    },
+    "hn.post_author": {
+        "selector": "a.hnuser",
         "extract": [
             "innerText"
         ]
     },
-    "hn.post_author": {
-        "selector": "tr.athing:first-of-type + tr .hnuser",
+    "hn.post_age": {
+        "selector": "span.age",
         "extract": [
             "innerText"
-        ]
+        ],
+        "notes": "Time since posted, e.g. '3 hours ago'"
+    },
+    "hn.comments_count": {
+        "selector": "span.subline a[href^='item?id=']:last-child",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Comment count link, e.g. '135 comments'"
+    },
+    "hn.subtext": {
+        "selector": "td.subtext",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Full metadata row: points, user, time, comments"
+    },
+    "hn.more_button": {
+        "selector": "a.morelink",
+        "extract": [
+            "href"
+        ],
+        "notes": "Next page pagination button"
+    },
+    "hn.search_box": {
+        "selector": "input[name='q']",
+        "notes": "Search input at bottom of page"
     }
 }

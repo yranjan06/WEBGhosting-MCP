@@ -1,26 +1,103 @@
 {
-    "twitter.tweet_text": {
-        "selector": "article[data-testid='tweet']:first-of-type div[data-testid='tweetText']",
-        "extract": [
-            "innerText"
-        ]
+    "x.login_button": {
+        "selector": "a[data-testid='loginButton']",
+        "notes": "Landing page → redirects to /login"
     },
-    "twitter.tweet_author": {
-        "selector": "article[data-testid='tweet']:first-of-type div[data-testid='User-Name']",
-        "extract": [
-            "innerText"
-        ]
+    "x.signup_button": {
+        "selector": "a[data-testid='signupButton']",
+        "notes": "Landing page → redirects to /i/flow/signup"
     },
-    "twitter.search_box": {
+    "x.apple_auth": {
+        "selector": "button[data-testid='apple_sign_in_button']"
+    },
+    "x.google_auth": {
+        "selector": "div[data-testid='google_sign_in_container']",
+        "notes": "Google button inside iframe — may need frame switching"
+    },
+    "x.grok_link": {
+        "selector": "a[href='https://grok.com/']",
+        "notes": "External link to Grok AI"
+    },
+    "x.search_box": {
         "selector": "input[data-testid='SearchBox_Search_Input']",
-        "fallback": "input[placeholder*='Search']"
+        "fallback": "input[aria-label='Search query']",
+        "notes": "Post-login global search bar"
     },
-    "twitter.compose_box": {
+    "x.tweet_compose": {
         "selector": "div[data-testid='tweetTextarea_0']",
-        "fallback": "div[role='textbox']"
+        "fallback": "div[aria-label='Post text']",
+        "notes": "Rich text editor (contenteditable)"
     },
-    "twitter.tweet_button": {
+    "x.tweet_button": {
         "selector": "button[data-testid='tweetButtonInline']",
-        "fallback": "div[data-testid='tweetButton']"
+        "fallback": "div[data-testid='toolBar'] button[data-testid='tweetButton']",
+        "notes": "Publish post button"
+    },
+    "x.media_upload": {
+        "selector": "input[data-testid='fileInput']",
+        "notes": "Hidden input for photo/video upload"
+    },
+    "x.tweet_article": {
+        "selector": "article[data-testid='tweet']",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Full tweet container in feed"
+    },
+    "x.tweet_text": {
+        "selector": "div[data-testid='tweetText']",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Tweet body text content"
+    },
+    "x.tweet_user": {
+        "selector": "div[data-testid='User-Name']",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Display name + @handle"
+    },
+    "x.social_context": {
+        "selector": "span[data-testid='socialContext']",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Shows 'Reposted by X' or similar context"
+    },
+    "x.like_button": {
+        "selector": "button[data-testid='like']"
+    },
+    "x.retweet_button": {
+        "selector": "button[data-testid='retweet']"
+    },
+    "x.reply_button": {
+        "selector": "button[data-testid='reply']"
+    },
+    "x.bookmark_button": {
+        "selector": "button[data-testid='bookmark']"
+    },
+    "x.nav_home": {
+        "selector": "a[data-testid='AppTabBar_Home_Link']"
+    },
+    "x.nav_explore": {
+        "selector": "a[data-testid='AppTabBar_Explore_Link']"
+    },
+    "x.nav_notifications": {
+        "selector": "a[data-testid='AppTabBar_Notifications_Link']"
+    },
+    "x.nav_messages": {
+        "selector": "a[data-testid='AppTabBar_DirectMessage_Link']"
+    },
+    "x.nav_profile": {
+        "selector": "a[data-testid='AppTabBar_Profile_Link']"
+    },
+    "x.footer_links": {
+        "selector": "nav[aria-label='Footer'] a",
+        "extract": [
+            "innerText",
+            "href"
+        ],
+        "notes": "Landing page footer navigation"
     }
 }

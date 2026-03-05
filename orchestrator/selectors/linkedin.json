@@ -1,23 +1,81 @@
 {
-    "linkedin.post_box": {
-        "selector": "div.ql-editor[data-placeholder]",
-        "fallback": "div[role='textbox']",
-        "notes": "LinkedIn's post composer uses Quill editor"
+    "linkedin.search_input": {
+        "selector": "input.search-global-typeahead__input",
+        "fallback": "input[aria-label='Search']",
+        "notes": "Global search bar in top nav"
+    },
+    "linkedin.nav_home": {
+        "selector": "a[data-test-global-nav-link='home']"
+    },
+    "linkedin.nav_network": {
+        "selector": "a[data-test-global-nav-link='mynetwork']"
+    },
+    "linkedin.nav_jobs": {
+        "selector": "a[data-test-global-nav-link='jobs']"
+    },
+    "linkedin.nav_messaging": {
+        "selector": "a[data-test-global-nav-link='messaging']"
+    },
+    "linkedin.nav_notifications": {
+        "selector": "a[data-test-global-nav-link='notifications']"
+    },
+    "linkedin.start_post": {
+        "selector": "button.share-box-feed-entry__trigger",
+        "notes": "Opens the post composer modal"
+    },
+    "linkedin.post_editor": {
+        "selector": "div[role='textbox'][aria-label='Text editor for creating content']",
+        "fallback": "div.ql-editor[contenteditable='true']",
+        "notes": "Rich text editor inside the modal"
+    },
+    "linkedin.post_button": {
+        "selector": "button.share-actions__primary-action",
+        "notes": "Enabled after typing content"
     },
     "linkedin.feed_post": {
-        "selector": "div.feed-shared-update-v2:first-of-type",
+        "selector": "div.feed-shared-update-v2",
         "extract": [
             "innerText"
-        ]
+        ],
+        "notes": "Each post container in the feed"
     },
     "linkedin.post_author": {
-        "selector": "div.feed-shared-update-v2:first-of-type span.feed-shared-actor__name",
+        "selector": "span.update-components-actor__name",
         "extract": [
             "innerText"
         ]
     },
-    "linkedin.search_box": {
-        "selector": "input.search-global-typeahead__input",
-        "fallback": "input[placeholder*='Search']"
+    "linkedin.post_content": {
+        "selector": "div.update-components-text",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "linkedin.post_show_more": {
+        "selector": "button.feed-shared-inline-show-more-text",
+        "notes": "Expand truncated post text"
+    },
+    "linkedin.like_button": {
+        "selector": "button[aria-label^='Like']",
+        "fallback": "button.react-button__trigger",
+        "notes": "aria-label starts with 'Like'"
+    },
+    "linkedin.comment_box": {
+        "selector": "div.ql-editor[contenteditable='true']",
+        "notes": "Comment editor on a post"
+    },
+    "linkedin.profile_name": {
+        "selector": "div.feed-identity-module__actor-meta a",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Logged-in user name in sidebar"
+    },
+    "linkedin.profile_headline": {
+        "selector": "div.feed-identity-module__actor-meta div",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "User headline below name"
     }
 }

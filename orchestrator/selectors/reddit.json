@@ -1,4 +1,64 @@
 {
+    "reddit.search_input": {
+        "selector": "input[name='q']",
+        "fallback": "input[placeholder*='Search']",
+        "notes": "Inside shreddit-app/reddit-search-large"
+    },
+    "reddit.create_post": {
+        "selector": "#create-post",
+        "notes": "Create new post button"
+    },
+    "reddit.user_menu": {
+        "selector": "#expand-user-drawer-button",
+        "notes": "Click to open Settings, Logout, etc."
+    },
+    "reddit.notifications": {
+        "selector": "#notifications-inbox-button",
+        "notes": "Inbox/notification bell"
+    },
+    "reddit.post_title": {
+        "selector": "h3.i18n-list-item-post-title",
+        "fallback": "shreddit-post [slot='title']",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "reddit.post_body": {
+        "selector": "div[slot='text-body']",
+        "fallback": ".Post .RichTextJSON-root",
+        "extract": [
+            "innerText"
+        ]
+    },
+    "reddit.subreddit_link": {
+        "selector": "a[href^='/r/']",
+        "extract": [
+            "href",
+            "innerText"
+        ],
+        "notes": "Subreddit name like r/Android"
+    },
+    "reddit.post_link": {
+        "selector": "a[href*='/comments/']",
+        "extract": [
+            "href"
+        ],
+        "notes": "Direct link to post's comment page"
+    },
+    "reddit.upvotes": {
+        "selector": "faceplate-number[number]",
+        "extract": [
+            "number"
+        ],
+        "notes": "Web Component attribute has exact numeric count"
+    },
+    "reddit.time_posted": {
+        "selector": "faceplate-timeago",
+        "extract": [
+            "ts"
+        ],
+        "notes": "ISO timestamp in ts attribute"
+    },
     "reddit.first_comment": {
         "selector": "shreddit-comment[depth='0']",
         "text_selector": "div[slot='comment']",
@@ -20,18 +80,11 @@
         ],
         "fallback": ".comment .comment .md"
     },
-    "reddit.post_title": {
-        "selector": "h1",
-        "fallback": "shreddit-post [slot='title']",
+    "reddit.recent_posts": {
+        "selector": "recent-posts",
         "extract": [
             "innerText"
-        ]
-    },
-    "reddit.post_body": {
-        "selector": "div[slot='text-body']",
-        "fallback": ".Post .RichTextJSON-root",
-        "extract": [
-            "innerText"
-        ]
+        ],
+        "notes": "Recent posts sidebar widget"
     }
 }
