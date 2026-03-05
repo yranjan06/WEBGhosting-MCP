@@ -4,6 +4,12 @@
         "fallback": "#title h1",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "youtube.channel_name": {
@@ -11,6 +17,12 @@
         "fallback": "ytd-channel-name a",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "youtube.view_count": {
@@ -18,23 +30,48 @@
         "fallback": "#info-strings yt-formatted-string",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "youtube.search_box": {
         "selector": "input#search",
-        "fallback": "input[name='search_query']"
+        "fallback": "input[name='search_query']",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "youtube.first_result": {
         "selector": "ytd-video-renderer:first-of-type a#video-title",
         "extract": [
             "innerText",
             "href"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "youtube.first_comment": {
         "selector": "ytd-comment-thread-renderer:first-of-type #content-text",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "data",
+            "write",
+            "core",
+            "extract",
+            "content"
         ]
     }
 }

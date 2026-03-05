@@ -1,96 +1,212 @@
 {
     "x.login_button": {
         "selector": "a[data-testid='loginButton']",
-        "notes": "Landing page → redirects to /login"
+        "notes": "Landing page \u2192 redirects to /login",
+        "tags": [
+            "interact",
+            "navigate",
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "x.signup_button": {
         "selector": "a[data-testid='signupButton']",
-        "notes": "Landing page → redirects to /i/flow/signup"
+        "notes": "Landing page \u2192 redirects to /i/flow/signup",
+        "tags": [
+            "interact",
+            "core",
+            "navigate"
+        ]
     },
     "x.apple_auth": {
-        "selector": "button[data-testid='apple_sign_in_button']"
+        "selector": "button[data-testid='apple_sign_in_button']",
+        "tags": [
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "x.google_auth": {
         "selector": "div[data-testid='google_sign_in_container']",
-        "notes": "Google button inside iframe — may need frame switching"
+        "notes": "Google button inside iframe \u2014 may need frame switching",
+        "tags": [
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "x.grok_link": {
         "selector": "a[href='https://grok.com/']",
-        "notes": "External link to Grok AI"
+        "notes": "External link to Grok AI",
+        "tags": [
+            "interact",
+            "core",
+            "navigate"
+        ]
     },
     "x.search_box": {
         "selector": "input[data-testid='SearchBox_Search_Input']",
         "fallback": "input[aria-label='Search query']",
-        "notes": "Post-login global search bar"
+        "notes": "Post-login global search bar",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "x.tweet_compose": {
         "selector": "div[data-testid='tweetTextarea_0']",
         "fallback": "div[aria-label='Post text']",
-        "notes": "Rich text editor (contenteditable)"
+        "notes": "Rich text editor (contenteditable)",
+        "tags": [
+            "core",
+            "write",
+            "content"
+        ]
     },
     "x.tweet_button": {
         "selector": "button[data-testid='tweetButtonInline']",
         "fallback": "div[data-testid='toolBar'] button[data-testid='tweetButton']",
-        "notes": "Publish post button"
+        "notes": "Publish post button",
+        "tags": [
+            "interact",
+            "write",
+            "navigate",
+            "core",
+            "content"
+        ]
     },
     "x.media_upload": {
         "selector": "input[data-testid='fileInput']",
-        "notes": "Hidden input for photo/video upload"
+        "notes": "Hidden input for photo/video upload",
+        "tags": [
+            "core"
+        ]
     },
     "x.tweet_article": {
         "selector": "article[data-testid='tweet']",
         "extract": [
             "innerText"
         ],
-        "notes": "Full tweet container in feed"
+        "notes": "Full tweet container in feed",
+        "tags": [
+            "read",
+            "data",
+            "write",
+            "core",
+            "extract",
+            "content"
+        ]
     },
     "x.tweet_text": {
         "selector": "div[data-testid='tweetText']",
         "extract": [
             "innerText"
         ],
-        "notes": "Tweet body text content"
+        "notes": "Tweet body text content",
+        "tags": [
+            "read",
+            "data",
+            "write",
+            "core",
+            "extract",
+            "content"
+        ]
     },
     "x.tweet_user": {
         "selector": "div[data-testid='User-Name']",
         "extract": [
             "innerText"
         ],
-        "notes": "Display name + @handle"
+        "notes": "Display name + @handle",
+        "tags": [
+            "read",
+            "data",
+            "write",
+            "core",
+            "extract",
+            "content"
+        ]
     },
     "x.social_context": {
         "selector": "span[data-testid='socialContext']",
         "extract": [
             "innerText"
         ],
-        "notes": "Shows 'Reposted by X' or similar context"
+        "notes": "Shows 'Reposted by X' or similar context",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "x.like_button": {
-        "selector": "button[data-testid='like']"
+        "selector": "button[data-testid='like']",
+        "tags": [
+            "interact",
+            "core",
+            "navigate"
+        ]
     },
     "x.retweet_button": {
-        "selector": "button[data-testid='retweet']"
+        "selector": "button[data-testid='retweet']",
+        "tags": [
+            "interact",
+            "write",
+            "navigate",
+            "core",
+            "content"
+        ]
     },
     "x.reply_button": {
-        "selector": "button[data-testid='reply']"
+        "selector": "button[data-testid='reply']",
+        "tags": [
+            "interact",
+            "write",
+            "navigate",
+            "core",
+            "content"
+        ]
     },
     "x.bookmark_button": {
-        "selector": "button[data-testid='bookmark']"
+        "selector": "button[data-testid='bookmark']",
+        "tags": [
+            "interact",
+            "core",
+            "navigate"
+        ]
     },
     "x.nav_home": {
-        "selector": "a[data-testid='AppTabBar_Home_Link']"
+        "selector": "a[data-testid='AppTabBar_Home_Link']",
+        "tags": [
+            "core"
+        ]
     },
     "x.nav_explore": {
-        "selector": "a[data-testid='AppTabBar_Explore_Link']"
+        "selector": "a[data-testid='AppTabBar_Explore_Link']",
+        "tags": [
+            "core"
+        ]
     },
     "x.nav_notifications": {
-        "selector": "a[data-testid='AppTabBar_Notifications_Link']"
+        "selector": "a[data-testid='AppTabBar_Notifications_Link']",
+        "tags": [
+            "core"
+        ]
     },
     "x.nav_messages": {
-        "selector": "a[data-testid='AppTabBar_DirectMessage_Link']"
+        "selector": "a[data-testid='AppTabBar_DirectMessage_Link']",
+        "tags": [
+            "core"
+        ]
     },
     "x.nav_profile": {
-        "selector": "a[data-testid='AppTabBar_Profile_Link']"
+        "selector": "a[data-testid='AppTabBar_Profile_Link']",
+        "tags": [
+            "core"
+        ]
     },
     "x.footer_links": {
         "selector": "nav[aria-label='Footer'] a",
@@ -98,6 +214,14 @@
             "innerText",
             "href"
         ],
-        "notes": "Landing page footer navigation"
+        "notes": "Landing page footer navigation",
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract"
+        ]
     }
 }

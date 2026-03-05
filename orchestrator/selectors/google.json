@@ -2,25 +2,50 @@
     "google.search_box": {
         "selector": "textarea#APjFqb",
         "fallback": "textarea[name='q']",
-        "notes": "Google switched from input to textarea in 2024"
+        "notes": "Google switched from input to textarea in 2024",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "google.search_button": {
         "selector": "input[name='btnK']",
         "fallback": "button[type='submit']",
-        "notes": "btnK is the stable name attribute for Google Search button"
+        "notes": "btnK is the stable name attribute for Google Search button",
+        "tags": [
+            "interact",
+            "query",
+            "search",
+            "navigate",
+            "core"
+        ]
     },
     "google.voice_search": {
         "selector": "div[aria-label='Search by voice']",
-        "notes": "aria-label is stable for accessibility"
+        "notes": "aria-label is stable for accessibility",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "google.lens_search": {
         "selector": "div[aria-label='Search by image']",
-        "notes": "Google Lens / image search"
+        "notes": "Google Lens / image search",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "google.ai_mode": {
         "selector": "button.plR5qb",
         "fallback": "button[aria-label='AI Mode']",
-        "notes": "New AI Mode button on homepage"
+        "notes": "New AI Mode button on homepage",
+        "tags": [
+            "core"
+        ]
     },
     "google.account_info": {
         "selector": "a[aria-label^='Google Account']",
@@ -28,7 +53,13 @@
         "extract": [
             "aria-label"
         ],
-        "notes": "Logged-in user info, aria-label contains email"
+        "notes": "Logged-in user info, aria-label contains email",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "google.language_links": {
         "selector": "#SIvCob a",
@@ -36,31 +67,60 @@
             "innerText",
             "href"
         ],
-        "notes": "Language option links on homepage"
+        "notes": "Language option links on homepage",
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "google.ai_overview": {
         "selector": "div.YzCcne",
         "extract": [
             "innerText"
         ],
-        "notes": "Gemini AI Overview container, not always present"
+        "notes": "Gemini AI Overview container, not always present",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "google.ai_text": {
         "selector": "div.Y3BBE",
         "extract": [
             "innerText"
         ],
-        "notes": "AI-generated answer text inside the overview"
+        "notes": "AI-generated answer text inside the overview",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "google.ai_show_more": {
         "selector": "div[jsname='rPRdsc']",
-        "notes": "Click to expand full AI answer"
+        "notes": "Click to expand full AI answer",
+        "tags": [
+            "core"
+        ]
     },
     "google.first_result": {
         "selector": "h3.LC20lb",
         "fallback": "#search a h3",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "google.result_link": {
@@ -68,6 +128,14 @@
         "fallback": "div.g a",
         "extract": [
             "href"
+        ],
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract"
         ]
     },
     "google.result_snippet": {
@@ -75,6 +143,12 @@
         "fallback": "div.IsZvec",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "google.result_block": {
@@ -82,52 +156,115 @@
         "fallback": "div.g",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "google.first_reddit_link": {
-        "script": "Array.from(document.querySelectorAll('a[jsname=\"UWckNb\"]')).find(a => a.href.includes('reddit.com'))",
-        "fallback_script": "Array.from(document.querySelectorAll('a')).find(a => a.href.includes('reddit.com') && a.querySelector('h3'))"
+        "script": "(() => { function getRealUrl(h) { if(!h) return ''; if(!h.includes('/url?q=')) return h; try { const u = new URL(h.startsWith('/') ? `https://www.google.com${h}` : h); return decodeURIComponent(u.searchParams.get('q') || ''); } catch(e) { const m = h.match(/q=([^&]+)/); return m ? decodeURIComponent(m[1]) : h; } } const a = Array.from(document.querySelectorAll('a')).find(el => { const href = el.getAttribute('href'); if(!href) return false; const realUrl = getRealUrl(href); return realUrl.includes('reddit.com') && el.querySelector('h3'); }); return JSON.stringify(a ? { url: getRealUrl(a.getAttribute('href')) } : { error: 'Not found' }); })()",
+        "notes": "Extracts the exact URL of the first Reddit result on Google. Parses the /url?q= parameter to bypass Google click-tracking.",
+        "tags": [
+            "interact",
+            "core",
+            "navigate"
+        ]
     },
     "google.next_page": {
         "selector": "a#pnnext",
         "fallback": "table.AaVjTc a:last-child",
-        "notes": "Pagination next button, very stable ID"
+        "notes": "Pagination next button, very stable ID",
+        "tags": [
+            "interact",
+            "core",
+            "navigate"
+        ]
     },
     "google.auth_email": {
         "selector": "input#identifierId",
         "fallback": "input[name='identifier']",
-        "notes": "OAuth email/phone input field"
+        "notes": "OAuth email/phone input field",
+        "tags": [
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "google.auth_next": {
         "selector": "#identifierNext button",
-        "notes": "Triggers password screen after email entry"
+        "notes": "Triggers password screen after email entry",
+        "tags": [
+            "interact",
+            "navigate",
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "google.auth_password": {
         "selector": "input[name='Passwd']",
         "fallback": "input[type='password']",
-        "notes": "Password field on second OAuth screen"
+        "notes": "Password field on second OAuth screen",
+        "tags": [
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "google.auth_password_next": {
         "selector": "#passwordNext button",
-        "notes": "Submit password button"
+        "notes": "Submit password button",
+        "tags": [
+            "interact",
+            "navigate",
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "google.auth_forgot_email": {
         "selector": "button[jsname='Cuz2Ue']",
-        "notes": "Recovery flow trigger"
+        "notes": "Recovery flow trigger",
+        "tags": [
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "google.auth_captcha_img": {
         "selector": "img#captchaimg",
-        "notes": "Only present if Google triggers security check"
+        "notes": "Only present if Google triggers security check",
+        "tags": [
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "google.auth_captcha_input": {
         "selector": "input#ca",
-        "notes": "Type captcha solution here"
+        "notes": "Type captcha solution here",
+        "tags": [
+            "auth",
+            "core",
+            "login"
+        ]
     },
     "google.auth_target_site": {
         "selector": "button[jsname='LZaERc']",
         "extract": [
             "innerText"
         ],
-        "notes": "Shows destination app (x.com, etc.) — anti-phishing check"
+        "notes": "Shows destination app (x.com, etc.) \u2014 anti-phishing check",
+        "tags": [
+            "read",
+            "data",
+            "auth",
+            "core",
+            "login",
+            "extract"
+        ]
     }
 }

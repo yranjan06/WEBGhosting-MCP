@@ -1,7 +1,10 @@
 {
     "hn.item_container": {
         "selector": "tr.athing",
-        "notes": "Main news row, each item has unique id attribute"
+        "notes": "Main news row, each item has unique id attribute",
+        "tags": [
+            "core"
+        ]
     },
     "hn.top_post": {
         "selector": "tr.athing:first-of-type span.titleline > a",
@@ -10,7 +13,13 @@
             "href"
         ],
         "fallback": "span.titleline > a",
-        "notes": "HN layout unchanged for 15+ years, very stable"
+        "notes": "HN layout unchanged for 15+ years, very stable",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "hn.title_link": {
         "selector": "span.titleline > a",
@@ -18,26 +27,56 @@
             "innerText",
             "href"
         ],
-        "notes": "Direct source URL of the news article"
+        "notes": "Direct source URL of the news article",
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "hn.rank": {
         "selector": "span.rank",
         "extract": [
             "innerText"
         ],
-        "notes": "News number (1., 2., etc.)"
+        "notes": "News number (1., 2., etc.)",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "hn.source_site": {
         "selector": "span.sitestr",
         "extract": [
             "innerText"
         ],
-        "notes": "Source domain like github.com, apple.com"
+        "notes": "Source domain like github.com, apple.com",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "hn.comments_link": {
         "script": "Array.from(document.querySelectorAll('tr.athing:first-of-type + tr .subtext a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss'))",
         "extract": [
             "href"
+        ],
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "write",
+            "navigate",
+            "core",
+            "extract",
+            "content"
         ]
     },
     "hn.first_comment": {
@@ -45,19 +84,41 @@
         "extract": [
             "innerText"
         ],
-        "fallback": ".commtext"
+        "fallback": ".commtext",
+        "tags": [
+            "read",
+            "data",
+            "write",
+            "core",
+            "extract",
+            "content"
+        ]
     },
     "hn.post_score": {
         "selector": "span.score",
         "extract": [
             "innerText"
         ],
-        "notes": "Points count, e.g. '256 points'"
+        "notes": "Points count, e.g. '256 points'",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "hn.post_author": {
         "selector": "a.hnuser",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "data",
+            "auth",
+            "core",
+            "login",
+            "extract"
         ]
     },
     "hn.post_age": {
@@ -65,31 +126,71 @@
         "extract": [
             "innerText"
         ],
-        "notes": "Time since posted, e.g. '3 hours ago'"
+        "notes": "Time since posted, e.g. '3 hours ago'",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "hn.comments_count": {
         "selector": "span.subline a[href^='item?id=']:last-child",
         "extract": [
             "innerText"
         ],
-        "notes": "Comment count link, e.g. '135 comments'"
+        "notes": "Comment count link, e.g. '135 comments'",
+        "tags": [
+            "read",
+            "data",
+            "write",
+            "core",
+            "extract",
+            "content"
+        ]
     },
     "hn.subtext": {
         "selector": "td.subtext",
         "extract": [
             "innerText"
         ],
-        "notes": "Full metadata row: points, user, time, comments"
+        "notes": "Full metadata row: points, user, time, comments",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "hn.more_button": {
         "selector": "a.morelink",
         "extract": [
             "href"
         ],
-        "notes": "Next page pagination button"
+        "notes": "Next page pagination button",
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "hn.search_box": {
         "selector": "input[name='q']",
-        "notes": "Search input at bottom of page"
+        "notes": "Search input at bottom of page",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
+    },
+    "hn.extract_top_n": {
+        "script": "(() => { const rows = Array.from(document.querySelectorAll('tr.athing')).slice(0, 5); return JSON.stringify(rows.map(row => { const sub = row.nextElementSibling; return { title: row.querySelector('span.titleline > a')?.innerText || '', url: row.querySelector('span.titleline > a')?.href || '', score: sub?.querySelector('span.score')?.innerText || '', author: sub?.querySelector('a.hnuser')?.innerText || '' }; })); })()",
+        "notes": "Extracts the top 5 Hacker News stories (title, url, score, author) handling the complex two-row DOM structure.",
+        "tags": [
+            "core"
+        ]
     }
 }

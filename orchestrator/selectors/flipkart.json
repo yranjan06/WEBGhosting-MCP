@@ -4,6 +4,12 @@
         "fallback": "h1 span",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "flipkart.product_price": {
@@ -11,23 +17,48 @@
         "fallback": "div._16Jk6d",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "flipkart.product_rating": {
         "selector": "div.XQDdHH, div._3LWZlK",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "flipkart.search_box": {
         "selector": "input.Pke_EE",
-        "fallback": "input[name='q']"
+        "fallback": "input[name='q']",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "flipkart.first_search_result": {
         "selector": "a.CGtC98, div._1AtVbE a._1fQZEK",
         "extract": [
             "innerText",
             "href"
+        ],
+        "tags": [
+            "read",
+            "query",
+            "data",
+            "search",
+            "core",
+            "extract"
         ]
     }
 }

@@ -3,12 +3,24 @@
         "selector": "strong[itemprop='name'] a, .AppHeader-context-item-label",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "github.repo_description": {
         "selector": "p.f4.my-3, [itemprop='about']",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "github.repo_stars": {
@@ -16,16 +28,33 @@
         "fallback": "a[href*='stargazers'] span",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "github.search_box": {
         "selector": "input.header-search-input, input[name='query-builder-test']",
-        "fallback": "input[placeholder*='Search']"
+        "fallback": "input[placeholder*='Search']",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "github.file_content": {
         "selector": "div[itemprop='text'], .react-code-text",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     }
 }

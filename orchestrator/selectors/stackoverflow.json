@@ -3,22 +3,45 @@
         "selector": "#question-header h1 a",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "stackoverflow.question_body": {
         "selector": "#question .s-prose",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "stackoverflow.top_answer": {
         "selector": "#answers .answer:first-of-type .s-prose",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "stackoverflow.search_box": {
         "selector": "input[name='q'].s-input",
-        "fallback": "input[placeholder*='Search']"
+        "fallback": "input[placeholder*='Search']",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     }
 }

@@ -2,25 +2,45 @@
     "reddit.search_input": {
         "selector": "input[name='q']",
         "fallback": "input[placeholder*='Search']",
-        "notes": "Inside shreddit-app/reddit-search-large"
+        "notes": "Inside shreddit-app/reddit-search-large",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "reddit.create_post": {
         "selector": "#create-post",
-        "notes": "Create new post button"
+        "notes": "Create new post button",
+        "tags": [
+            "core"
+        ]
     },
     "reddit.user_menu": {
         "selector": "#expand-user-drawer-button",
-        "notes": "Click to open Settings, Logout, etc."
+        "notes": "Click to open Settings, Logout, etc.",
+        "tags": [
+            "core"
+        ]
     },
     "reddit.notifications": {
         "selector": "#notifications-inbox-button",
-        "notes": "Inbox/notification bell"
+        "notes": "Inbox/notification bell",
+        "tags": [
+            "core"
+        ]
     },
     "reddit.post_title": {
         "selector": "h3.i18n-list-item-post-title",
         "fallback": "shreddit-post [slot='title']",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "reddit.post_body": {
@@ -28,6 +48,14 @@
         "fallback": ".Post .RichTextJSON-root",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "data",
+            "write",
+            "core",
+            "extract",
+            "content"
         ]
     },
     "reddit.subreddit_link": {
@@ -36,28 +64,56 @@
             "href",
             "innerText"
         ],
-        "notes": "Subreddit name like r/Android"
+        "notes": "Subreddit name like r/Android",
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "reddit.post_link": {
         "selector": "a[href*='/comments/']",
         "extract": [
             "href"
         ],
-        "notes": "Direct link to post's comment page"
+        "notes": "Direct link to post's comment page",
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "reddit.upvotes": {
         "selector": "faceplate-number[number]",
         "extract": [
             "number"
         ],
-        "notes": "Web Component attribute has exact numeric count"
+        "notes": "Web Component attribute has exact numeric count",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "reddit.time_posted": {
         "selector": "faceplate-timeago",
         "extract": [
             "ts"
         ],
-        "notes": "ISO timestamp in ts attribute"
+        "notes": "ISO timestamp in ts attribute",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "reddit.first_comment": {
         "selector": "shreddit-comment[depth='0']",
@@ -69,7 +125,12 @@
             "permalink"
         ],
         "fallback": ".comment .md",
-        "notes": "New Reddit uses Web Components with depth attribute"
+        "notes": "New Reddit uses Web Components with depth attribute",
+        "tags": [
+            "core",
+            "write",
+            "content"
+        ]
     },
     "reddit.first_reply": {
         "selector": "shreddit-comment[depth='1']",
@@ -78,13 +139,24 @@
             "author",
             "score"
         ],
-        "fallback": ".comment .comment .md"
+        "fallback": ".comment .comment .md",
+        "tags": [
+            "core",
+            "write",
+            "content"
+        ]
     },
     "reddit.recent_posts": {
         "selector": "recent-posts",
         "extract": [
             "innerText"
         ],
-        "notes": "Recent posts sidebar widget"
+        "notes": "Recent posts sidebar widget",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     }
 }

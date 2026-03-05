@@ -4,6 +4,12 @@
         "fallback": "#firstHeading",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "wikipedia.article_intro": {
@@ -11,16 +17,33 @@
         "extract": [
             "innerText"
         ],
-        "notes": "First non-empty paragraph is usually the intro"
+        "notes": "First non-empty paragraph is usually the intro",
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
+        ]
     },
     "wikipedia.search_box": {
         "selector": "#searchInput",
-        "fallback": "input[name='search']"
+        "fallback": "input[name='search']",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "wikipedia.infobox": {
         "selector": "table.infobox",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     }
 }

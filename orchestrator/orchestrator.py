@@ -280,28 +280,121 @@ EXACT action formats (use these EXACTLY):
 {"id": 1, "action": "browse", "url": "https://example.com", "narrate": "Opening site..."}
 {"id": 2, "action": "wait", "state": "domcontentloaded"}
 {"id": 3, "action": "js", "code": "document.querySelector('h1').innerText", "save_as": "title", "narrate": "Reading title..."}
-{"id": 4, "action": "scroll", "amount": 600}
-{"id": 5, "action": "open_tab"}
-{"id": 6, "action": "switch_tab", "index": 0}
-{"id": 7, "action": "search", "selector": "textarea#APjFqb", "query": "search term", "narrate": "Searching..."}
-{"id": 8, "action": "wait_selector", "selector": "textarea#area"}
-{"id": 9, "action": "type_to_notepad", "selector": "textarea#area", "template": "text with {var.key}", "speed_ms": 15, "narrate": "Typing..."}
-{"id": 10, "action": "sleep", "seconds": 2}
-{"id": 11, "action": "hil_pause", "narrate": "Please solve the captcha"}
+{"id": 4, "action": "js_from_selector", "selector_id": "google.first_reddit_link", "save_as": "reddit_url", "narrate": "Executing mapped script"}
+{"id": 5, "action": "scroll", "amount": 600}
+{"id": 6, "action": "open_tab"}
+{"id": 7, "action": "switch_tab", "index": 0}
+{"id": 8, "action": "search", "selector": "textarea#APjFqb", "query": "search term", "narrate": "Searching..."}
+{"id": 9, "action": "wait_selector", "selector": "textarea#area"}
+{"id": 10, "action": "type_to_notepad", "selector": "textarea#area", "template": "text with {var.key}", "speed_ms": 15, "narrate": "Typing..."}
+{"id": 11, "action": "sleep", "seconds": 2}
+{"id": 12, "action": "hil_pause", "narrate": "Please solve the captcha"}
 
-Pre-cached selectors you can use in JS code:
+Pre-cached selector catalog (USE THIS FOR ACTION js_from_selector):
 {selectors}
 
-Variable system: save_as stores JS results as JSON. Reference via {variable.key} in later steps.
-For JS code that returns data, wrap in IIFE: (() => { ... return JSON.stringify({...}); })()
+Variable system: save_as stores results as JSON. Reference via {variable.key} in later steps.
 
 Rules:
 1. Output ONLY valid JSON. No markdown, no explanation, no backtick fences.
 2. Top-level keys: "name" (string) and "steps" (array)
 3. Every step MUST have "id" and "action". Use "narrate" for user-facing steps.
-4. "browse" MUST have "url". "js" MUST have "code". "search" MUST have "query".
-5. For Hacker News use tr.athing selectors. For Reddit use shreddit-comment[depth] selectors.
-6. Keep recipes minimal."""
+4. "browse" MUST have "url". "js" MUST have "code". "js_from_selector" MUST have "selector_id".
+5. Use "js_from_selector" ONLY for catalog items that are explicitly designed as scripts (e.g., 'google.first_reddit_link', 'hn.extract_top_n', 'hn.comments_link'). For normal DOM elements, write raw JS using the "js" action and the provided selector strings.
+6. Keep recipes minimal.
+7. For data extraction tasks, use "js" or "js_from_selector" with "save_as" to capture results. Do NOT use "type_to_notepad" unless requested.
+8. The final step should be an extraction step that saves data.
+9. ALWAYS use optional chaining (?.) when accessing DOM elements in raw JS.
+
+**CRITICAL TOOL USE RULES:**
+- DOM Lists: ALWAYS use `Array.from(document.querySelectorAll(...))` before calling `.slice()`, `.map()`, or `.filter()`. Raw NodeLists do not support these array methods.
+- Forms: NEVER use `.click()` in JS to submit a search or login form. ALWAYS use the `fill_form` tool, followed by the `press_key` tool with 'Enter'.
+- Twitter/X profiles: When navigating to a specific tweet or profile, remember you must be logged in. Wait for load states.
+- JSON Escaping: Ensure any raw JS code within JSON string values is properly escaped. Do not use invalid JSON escapes like space followed by \'.
+- Multi-Level Extractions: If you need to read a full post or article from a feed, do NOT try to extract the body from the feed. First, use a JS action to extract its URL (`href`), then use a `browse` action to navigate to that URL, `wait`, and then extract the full body.
+- Safe JS: Always use `|| 'Not found'` or `?.innerText` to prevent script crashes on missing elements."""
+
+import os
+import json
+import re
+
+SELECTOR_USAGE_FILE = os.path.join(os.path.dirname(__file__), "selectors", "selector_usage.json")
+
+def load_selector_usage():
+    if os.path.exists(SELECTOR_USAGE_FILE):
+        try:
+            with open(SELECTOR_USAGE_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def save_selector_usage(usage):
+    try:
+        with open(SELECTOR_USAGE_FILE, 'w') as f:
+            json.dump(usage, f, indent=2)
+    except Exception as e:
+        print(f"{DIM}  Failed to save selector usage: {e}{RESET}")
+
+def get_relevant_selectors(command, selectors_db):
+    cmd_lower = command.lower()
+    
+    # Mapping selector prefixes to regex patterns for smart matching
+    domain_map = {
+        "reddit.": r"\b(reddit|r/|shreddit)\b",
+        "hn.": r"\b(hacker news|hn|ycombinator|y combinator)\b",
+        "twitter.": r"\b(twitter|x\.com|tweet)\b",
+        "linkedin.": r"\b(linkedin|lnkd|lnkd\.in)\b",
+        "github.": r"\b(github|repo|pull request|pr)\b",
+        "amazon.": r"\b(amazon|buy on|add to cart)\b",
+        "youtube.": r"\b(youtube|yt|video)\b"
+    }
+
+    # Find matching prefixes
+    prefixes = []
+    for prefix, pattern in domain_map.items():
+        if re.search(pattern, cmd_lower):
+            prefixes.append(prefix)
+            
+    # Default Fallback
+    if not prefixes:
+        prefixes.append("google.") # Default router assumes generic web search
+        
+    # Map prompt keywords to semantic tags
+    prompt_words = set(re.findall(r'\b\w+\b', cmd_lower))
+    active_tags = set(["core"])
+    if prompt_words.intersection({"search", "find", "look", "query"}): active_tags.add("search")
+    if prompt_words.intersection({"login", "auth", "sign", "password", "email"}): active_tags.add("auth")
+    if prompt_words.intersection({"read", "extract", "get", "scrape", "save", "capture"}): active_tags.add("read")
+    if prompt_words.intersection({"post", "write", "comment", "reply", "tweet", "draft"}): active_tags.add("write")
+    if prompt_words.intersection({"go", "navigate", "click", "open", "link"}): active_tags.add("navigate")
+
+    # Get all valid selectors for matched prefixes THAT ALSO intersect with active tags
+    valid_selectors = []
+    for k, v in selectors_db.items():
+        if any(k.startswith(p) for p in prefixes):
+            sel_tags = set(v.get("tags", ["core"]))
+            # If it has a matching tag, or defaults to core, include it
+            if active_tags.intersection(sel_tags):
+                valid_selectors.append((k, v))
+    
+    # [OPTIMIZATION] Layered Sorting (Top 15 via 80/20 Rule)
+    usage_stats = load_selector_usage()
+    # Sort by weight/usage descending (default weight is 1)
+    valid_selectors.sort(key=lambda x: usage_stats.get(x[0], 1), reverse=True)
+    
+    MAX_SELECTORS = 15
+    top_selectors = valid_selectors[:MAX_SELECTORS]
+
+    # Strip out raw JS scripts and filter to save massive amounts of tokens
+    compact_selectors = {
+        k: {prop: v[prop] for prop in ['selector', 'notes', 'extract'] if prop in v}
+        for k, v in top_selectors
+    }
+            
+    p_names = ', '.join([p.strip('.') for p in prefixes])
+    print(f"{DIM}  [ROUTER] Injecting Top {len(top_selectors)} Selectors for: {p_names}{RESET}")
+    return compact_selectors
 
 
 def generate_recipe(command, selectors_db):
@@ -314,7 +407,10 @@ def generate_recipe(command, selectors_db):
         print(f"{RED}ERROR: AI_API_KEY not set{RESET}")
         return None
 
-    selectors_summary = json.dumps(selectors_db, indent=2)
+    # [OPTIMIZATION] Token-Efficient Smart Router
+    compact_selectors = get_relevant_selectors(command, selectors_db)
+
+    selectors_summary = json.dumps(compact_selectors, indent=2)
     system_prompt = RECIPE_SYSTEM_PROMPT.replace("{selectors}", selectors_summary)
 
     print(f"{CYAN}  Generating recipe for: {BOLD}\"{command}\"{RESET}")
@@ -338,14 +434,24 @@ def generate_recipe(command, selectors_db):
             },
             timeout=30
         )
+        if not resp.ok:
+            print(f"{RED}  LLM API error ({resp.status_code}): {resp.text}{RESET}")
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"].strip()
+        
+        # Extract JSON block between first '{' and last '}'
+        start_idx = content.find('{')
+        end_idx = content.rfind('}')
+        
+        if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
+            content = content[start_idx:end_idx+1]
+        else:
+            print(f"{RED}  Failed to find JSON object in response.{RESET}")
+            return None
 
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1]
-            content = content.rsplit("```", 1)[0]
-        content = content.strip()
-
+        # Pre-process content to fix common LLM JSON escaping bugs (like invalid \')
+        content = content.replace(r"\'", "'")
+        
         recipe = json.loads(content)
         steps = len(recipe.get("steps", []))
         print(f"  {GREEN}Recipe generated: \"{recipe.get('name', 'Unnamed')}\" ({steps} steps){RESET}")
@@ -425,9 +531,19 @@ class RecipeOrchestrator:
             elif action == "browse":
                 url = self.resolve_template(step["url"])
                 self.client.call("browse", {"url": url})
-                # Auto-HIL: check for captcha/login after navigation
+                
+                # [OPTIMIZATION] Dynamic Page Context Validation
+                # Auto-HIL: proactively check for barriers before executing blind actions
                 time.sleep(1)
                 hil_reason = detect_hil_needed(self.client)
+                
+                # Dynamic check: Did we get redirected to a login wall?
+                url_check = self.client.call("execute_js", {"script": "window.location.href"})
+                if url_check:
+                    current_url = str(url_check).lower()
+                    if ("login" in current_url or "signin" in current_url) and "login" not in url.lower():
+                        hil_reason = "login"
+
                 if hil_reason == "captcha":
                     hil_pause("Captcha detected! Please solve it in the browser.")
                 elif hil_reason == "login":
@@ -466,6 +582,33 @@ class RecipeOrchestrator:
                 self.client.call("switch_tab", {"index": step["index"]})
 
             # ─── Execution ───
+            elif action == "js_from_selector":
+                selector_id = step.get("selector_id")
+                if not selector_id or selector_id not in self.selectors:
+                    print(f"  {RED}[Step {step_id}] Error: selector_id '{selector_id}' not found in registry.{RESET}")
+                    return False
+                
+                sel_data = self.selectors[selector_id]
+                script = sel_data.get("script")
+                
+                if not script:
+                    # Auto-map simple selectors to JS based on extract attributes
+                    sel_str = sel_data.get("selector")
+                    if sel_str:
+                        extracts = sel_data.get("extract", ["innerText"])
+                        if "href" in extracts and "innerText" not in extracts:
+                            script = f"(() => {{ const el = document.querySelector(\"{sel_str}\"); return JSON.stringify(el ? el.href : null); }})()"
+                        elif "href" in extracts and "innerText" in extracts:
+                            script = f"(() => {{ const el = document.querySelector(\"{sel_str}\"); return JSON.stringify(el ? {{text: el.innerText.trim(), href: el.href}} : null); }})()"
+                        else:
+                            script = f"(() => {{ const el = document.querySelector(\"{sel_str}\"); return JSON.stringify(el ? el.innerText.trim() : null); }})()"
+                    else:
+                        print(f"  {RED}[Step {step_id}] Error: '{selector_id}' has no script or selector.{RESET}")
+                        return False
+                    
+                script = self.resolve_template(script)
+                result = self.client.call("execute_js", {"script": script})
+
             elif action == "js":
                 code = self.resolve_template(step["code"])
                 result = self.client.call("execute_js", {"script": code})
@@ -480,8 +623,11 @@ class RecipeOrchestrator:
                 self.client.call("press_key", {"key": "Enter"})
 
             elif action == "type_to_notepad":
+                if "selector" not in step:
+                    print(f"  {DIM}  [Step {step_id}] Skipping type_to_notepad — no selector provided.{RESET}")
+                    return True
                 selector = self.resolve_template(step["selector"])
-                text = self.resolve_template(step["template"])
+                text = self.resolve_template(step.get("template", step.get("text", "")))
                 speed = step.get("speed_ms", 15)
 
                 self.client.call("execute_js", {
@@ -519,9 +665,15 @@ class RecipeOrchestrator:
                 try:
                     parsed = json.loads(result)
                     self.context[save_as] = parsed
-                    print(f"  {DIM}  Saved to ${save_as}: {json.dumps(parsed)[:100]}...{RESET}")
+                    print(f"  {DIM}  Saved to ${save_as}: {json.dumps(parsed, indent=2)[:500]}{RESET}")
                 except (json.JSONDecodeError, TypeError):
                     self.context[save_as] = {"raw": str(result)[:500]}
+                    print(f"  {DIM}  Saved to ${save_as}: {str(result)[:300]}{RESET}")
+            elif result and action == "js":
+                # Print JS results even without save_as so user can see the output
+                result_str = str(result)
+                if len(result_str) > 20:  # Skip trivial results like 'found', 'null'
+                    print(f"  {GREEN}  Result: {result_str[:500]}{RESET}")
 
             pace = step.get("pace", 1.5)
             time.sleep(pace)
@@ -598,6 +750,24 @@ class RecipeOrchestrator:
             if self.selector_cache and self.selector_cache.healed_count > 0:
                 print(f"  {GREEN}[Cache] {self.selector_cache.healed_count} selector(s) self-healed and updated.{RESET}")
 
+            # Print final results summary
+            if self.context:
+                print(f"\n{CYAN}{'─'*60}")
+                print(f"  {BOLD}Results:{RESET}")
+                print(f"{CYAN}{'─'*60}{RESET}")
+                for key, value in self.context.items():
+                    if isinstance(value, (dict, list)):
+                        formatted = json.dumps(value, indent=2, ensure_ascii=False)
+                        # Truncate very long outputs
+                        if len(formatted) > 1500:
+                            formatted = formatted[:1500] + "\n  ...(truncated)"
+                        print(f"\n  {BOLD}{key}:{RESET}")
+                        for line in formatted.split('\n'):
+                            print(f"  {line}")
+                    else:
+                        print(f"  {BOLD}{key}:{RESET} {str(value)[:500]}")
+                print(f"{CYAN}{'─'*60}{RESET}")
+
             print(f"\n{GREEN}{BOLD}  Recipe completed successfully.{RESET}\n")
             return True
 
@@ -623,7 +793,29 @@ class RecipeOrchestrator:
         print(f"{DIM}  Temporary recipe: {tmp_path}{RESET}\n")
 
         try:
-            return self.run(tmp_path)
+            success = self.run(tmp_path)
+            
+            # [OPTIMIZATION] Self-Improving Usage Feedback Loop
+            if success and recipe:
+                usage_stats = load_selector_usage()
+                updated = False
+                for step in recipe.get('steps', []):
+                    action = step.get('action')
+                    sel_id = step.get('selector_id')
+                    # Log explicit JS selector usage
+                    if action == 'js_from_selector' and sel_id:
+                        usage_stats[sel_id] = usage_stats.get(sel_id, 1) + 1
+                        updated = True
+                    # Also log if the LLM hallucinated a search input for search/type tools
+                    elif action in ['type', 'search'] and sel_id:
+                         usage_stats[sel_id] = usage_stats.get(sel_id, 1) + 1
+                         updated = True
+
+                if updated:
+                    save_selector_usage(usage_stats)
+                    print(f"{DIM}  [CACHE] Updated self-learning selector weights.{RESET}")
+
+            return success
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)

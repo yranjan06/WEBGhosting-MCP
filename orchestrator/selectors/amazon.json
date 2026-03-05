@@ -3,6 +3,12 @@
         "selector": "#productTitle",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "amazon.product_price": {
@@ -10,6 +16,12 @@
         "fallback": "#priceblock_ourprice, #priceblock_dealprice, .a-price .a-offscreen",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "amazon.product_rating": {
@@ -17,27 +29,55 @@
         "fallback": "span[data-hook='rating-out-of-text']",
         "extract": [
             "innerText"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "amazon.product_image": {
         "selector": "#landingImage",
         "extract": [
             "src"
+        ],
+        "tags": [
+            "read",
+            "core",
+            "extract",
+            "data"
         ]
     },
     "amazon.search_box": {
         "selector": "#twotabsearchtextbox",
-        "fallback": "input[name='field-keywords']"
+        "fallback": "input[name='field-keywords']",
+        "tags": [
+            "core",
+            "search",
+            "query"
+        ]
     },
     "amazon.first_search_result": {
         "selector": "div[data-component-type='s-search-result']:first-of-type h2 a",
         "extract": [
             "innerText",
             "href"
+        ],
+        "tags": [
+            "read",
+            "query",
+            "data",
+            "search",
+            "core",
+            "extract"
         ]
     },
     "amazon.add_to_cart": {
         "selector": "#add-to-cart-button",
-        "fallback": "input[name='submit.add-to-cart']"
+        "fallback": "input[name='submit.add-to-cart']",
+        "tags": [
+            "core"
+        ]
     }
 }
