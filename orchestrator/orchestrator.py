@@ -202,27 +202,52 @@ CAPTCHA_INDICATORS = [
     "verify you are human", "i'm not a robot", "cloudflare"
 ]
 
-LOGIN_INDICATORS = [
-    "sign in", "log in", "login", "signin",
-    "enter your password", "authentication"
+# Only match these in the page TITLE (not body text) to avoid false positives
+LOGIN_TITLE_INDICATORS = [
+    "sign in", "log in", "login", "signin", "authenticate",
+    "enter your password", "verify your identity"
 ]
 
 
 def detect_hil_needed(client):
-    """Check if the current page has captcha or login that needs human intervention."""
-    try:
-        result = client.call("execute_js", {
-            "script": "document.title + ' ' + document.body.innerText.substring(0, 500)"
-        })
-        if not result:
-            return None
-        text = str(result).lower()
+    """Check if the current page IS a captcha or login page (not just has a login link).
 
-        for indicator in CAPTCHA_INDICATORS:
-            if indicator in text:
+    Strategy:
+      1. Check page title for login/captcha keywords
+      2. Check for actual login form elements (password input, captcha image)
+      3. Do NOT scan body text — that causes false positives on normal pages
+         that just have a "login" nav link (like HN, Reddit, etc.)
+    """
+    try:
+        # Check 1: Page title (login/captcha pages have distinctive titles)
+        title_result = client.call("execute_js", {
+            "script": "document.title"
+        })
+        if title_result:
+            title = str(title_result).lower()
+            for indicator in CAPTCHA_INDICATORS:
+                if indicator in title:
+                    return "captcha"
+            for indicator in LOGIN_TITLE_INDICATORS:
+                if indicator in title:
+                    return "login"
+
+        # Check 2: Actual form elements (password field or captcha image)
+        form_result = client.call("execute_js", {
+            "script": """(() => {
+                const has_password = document.querySelector('input[type="password"]') !== null;
+                const has_captcha = document.querySelector('img#captchaimg, .g-recaptcha, .h-captcha, iframe[src*="captcha"]') !== null;
+                const has_email_only = document.querySelector('input#identifierId, input[name="identifier"]') !== null;
+                if (has_captcha) return 'captcha';
+                if (has_password || has_email_only) return 'login_form';
+                return 'none';
+            })()"""
+        })
+        if form_result:
+            result_str = str(form_result)
+            if "captcha" in result_str:
                 return "captcha"
-        for indicator in LOGIN_INDICATORS:
-            if indicator in text:
+            if "login_form" in result_str:
                 return "login"
     except Exception:
         pass
