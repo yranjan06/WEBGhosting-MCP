@@ -193,26 +193,6 @@ export AI_API_KEY="nvapi-..." AI_BASE_URL="https://integrate.api.nvidia.com/v1" 
 
 **Utilities** — `wait_for_selector`, `wait_for_load_state`, `configure_dialog`, `get_status`, `get_console_logs`, `get_network_requests`, `clear_network_requests`
 
-## Architecture
-
-```
-orchestrator/             # Recipe Orchestrator (Python)
-  orchestrator.py         # Core engine: recipe execution + LLM recipe generation
-  selectors/              # Per-website selector files (55 selectors, 12 sites)
-  recipes/                # Pre-built JSON recipe files
-
-cmd/server/               # MCP Server (Go)
-  main.go                 # Server entry point, banner, transport setup
-  tools.go                # All 33 MCP tool registrations
-
-pkg/                      # Core Go packages
-  browser/                # Playwright engine with stealth hardening
-  agent/                  # LLM-powered element finding + data extraction
-
-examples/                 # Python demo scripts
-  client.py               # WEBGhostingClient — Python wrapper for MCP
-  e2e_voice_demo.py       # Cinematic demo: HN -> Reddit -> LinkedIn
-```
 
 ## License
 
