@@ -136,117 +136,20 @@ python3 examples/test_page_context.py
 
 ## Recipe Orchestrator
 
-The Recipe Orchestrator is WEBGhosting's **"brain"** — it turns natural language commands into automated, multi-step browser workflows without writing any Python code.
-
-### How It Works
-
-```
-You: "Go to HN and find top story"
-  |
-  v
-LLM auto-generates a 3-step JSON recipe
-  |
-  v
-Orchestrator executes each step via WEBGhosting browser engine
-  |
-  v
-Returns structured data, deletes temporary recipe
-```
-
-### Usage: Natural Language Mode
-
-Give any browser task in plain English and the Orchestrator handles everything:
+Give any browser task in natural language — WEBGhosting auto-generates a recipe, executes it, returns data, and cleans up.
 
 ```bash
-# Set your LLM provider
-export AI_API_KEY="your-key"
-export AI_BASE_URL="https://api.openai.com/v1"
-export AI_MODEL="gpt-4o"
+export AI_API_KEY="your-key" AI_BASE_URL="https://api.openai.com/v1" AI_MODEL="gpt-4o"
 
-# Run any task in natural language
 python3 -m orchestrator.orchestrator --run "Go to Hacker News and find the top story title"
-python3 -m orchestrator.orchestrator --run "Search Wikipedia for GrapheneOS and read the intro"
 python3 -m orchestrator.orchestrator --run "Go to Amazon and find iPhone 16 price"
+python3 -m orchestrator.orchestrator hn_reddit_linkedin.json   # run pre-built recipe
+python3 -m orchestrator.orchestrator --resume                  # resume after crash
 ```
 
-### Usage: Pre-built Recipe Mode
+MCP tools for IDE agents: `run_task`, `run_recipe`, `list_recipes`
 
-For repeatable workflows, use JSON recipe files:
-
-```bash
-# List available recipes
-python3 -m orchestrator.orchestrator --list
-
-# Run a recipe
-python3 -m orchestrator.orchestrator hn_reddit_linkedin.json
-```
-
-### Usage: MCP Tools (from any IDE)
-
-AI agents in Cursor, Copilot, or Cloud Code can call orchestrator tools directly:
-
-| MCP Tool | Description | Example Input |
-|----------|-------------|---------------|
-| `run_task` | Execute a task in natural language | `{"command": "Find top HN story"}` |
-| `run_recipe` | Run a pre-built recipe by name | `{"name": "hn_reddit_linkedin.json"}` |
-| `list_recipes` | Show all available recipes | — |
-
-### Writing a Recipe
-
-Recipes are declarative JSON files with sequential steps:
-
-```json
-{
-  "name": "My Task",
-  "steps": [
-    {"id": 1, "action": "browse", "url": "https://example.com", "narrate": "Opening site..."},
-    {"id": 2, "action": "wait", "state": "domcontentloaded"},
-    {"id": 3, "action": "js", "code": "document.querySelector('h1').innerText", "save_as": "title", "narrate": "Reading title..."},
-    {"id": 4, "action": "sleep", "seconds": 2}
-  ]
-}
-```
-
-**Supported actions:** `browse`, `wait`, `wait_selector`, `js`, `search`, `scroll`, `open_tab`, `switch_tab`, `type_to_notepad`, `sleep`
-
-**Variable system:** Use `save_as` to store JS results, reference them later as `{variable.key}`.
-
----
-
-## Selector Database
-
-WEBGhosting ships with **55 pre-cached CSS selectors** across **12 major websites**, stored in `orchestrator/selectors/` as per-website JSON files:
-
-```
-orchestrator/selectors/
-  hackernews.json     # 5 selectors (posts, comments, scores)
-  reddit.json         # 4 selectors (new + old Reddit)
-  google.json         # 3 selectors (search, results)
-  amazon.json         # 7 selectors (product, price, cart)
-  flipkart.json       # 5 selectors (product, search)
-  linkedin.json       # 4 selectors (feed, composer)
-  twitter.json        # 5 selectors (tweets, compose)
-  youtube.json        # 6 selectors (video, channel, comments)
-  github.json         # 5 selectors (repo, stars, search)
-  wikipedia.json      # 4 selectors (article, infobox)
-  stackoverflow.json  # 4 selectors (Q&A, answers)
-  others.json         # 3 selectors (naukri, notepad)
-```
-
-**Adding a new website:** Just create a new JSON file in `selectors/` — the orchestrator auto-merges all files at startup.
-
-```json
-{
-  "mysite.search_box": {
-    "selector": "#search-input",
-    "fallback": "input[type='search']"
-  },
-  "mysite.first_result": {
-    "selector": ".result-item:first-of-type a",
-    "extract": ["innerText", "href"]
-  }
-}
-```
+For recipe writing guide, supported actions, and selector database docs, see [CONTRIBUTING.md](CONTRIBUTING.md#recipe-orchestrator).
 
 ---
 
