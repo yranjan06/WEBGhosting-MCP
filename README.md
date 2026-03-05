@@ -1,14 +1,14 @@
 <p align="center">
-  <h1 align="center">GhostMCP</h1>
+  <h1 align="center">WEBGhosting</h1>
   <p align="center">
     <strong>Agentic Stealth Browser &bull; Recipe Orchestrator &bull; MCP Server &bull; Built for AI Agents</strong>
   </p>
   <p align="center">
-    <a href="https://github.com/yranjan06/GhostMCP/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+    <a href="https://github.com/yranjan06/WEBGhosting-MCP/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
     <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go" alt="Go Version"></a>
-    <a href="https://github.com/yranjan06/GhostMCP/blob/main/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
-    <a href="https://github.com/yranjan06/GhostMCP/issues"><img src="https://img.shields.io/github/issues/yranjan06/GhostMCP" alt="Issues"></a>
-    <a href="https://github.com/yranjan06/GhostMCP/stargazers"><img src="https://img.shields.io/github/stars/yranjan06/GhostMCP?style=social" alt="Stars"></a>
+    <a href="https://github.com/yranjan06/WEBGhosting-MCP/blob/main/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
+    <a href="https://github.com/yranjan06/WEBGhosting-MCP/issues"><img src="https://img.shields.io/github/issues/yranjan06/WEBGhosting-MCP" alt="Issues"></a>
+    <a href="https://github.com/yranjan06/WEBGhosting-MCP/stargazers"><img src="https://img.shields.io/github/stars/yranjan06/WEBGhosting-MCP?style=social" alt="Stars"></a>
   </p>
   <p align="center">
     <a href="#quick-start">Quick Start</a> &bull;
@@ -23,7 +23,7 @@
 
 Most AI agents can think. Very few can actually browse.
 
-**GhostMCP changes that.**
+**WEBGhosting changes that.**
 
 It is the stealthiest and most reliable MCP browser server for AI agents, built for real production use. With **33 powerful tools**, 22 anti-fingerprint scripts, LLM-powered extraction, and a **Recipe Orchestrator** that turns natural language commands into automated browser workflows — it gives AI agents a browser they can truly control.
 
@@ -39,7 +39,7 @@ Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.
 
 | Capability | What it means for your Agent |
 |---|---|
-| **Recipe Orchestrator** | Give a natural language command like *"Go to HN and find the top story"* — GhostMCP auto-generates a recipe, executes it, returns data, and cleans up |
+| **Recipe Orchestrator** | Give a natural language command like *"Go to HN and find the top story"* — WEBGhosting auto-generates a recipe, executes it, returns data, and cleans up |
 | **Pre-cached Selectors** | 55 selectors across 12 major websites (Amazon, Reddit, YouTube, GitHub, etc.) for instant, reliable DOM access |
 | **LLM-Powered Navigation** | Tell it `click("Login button")` or `type("Search box", "AI")` and it figures out the DOM |
 | **Stealth Hardening** | 22 fingerprint patches (Bezier mouse, typing cadence, WebGL noise) to bypass bot protection |
@@ -57,8 +57,8 @@ Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.
 ## Quick Start
 
 ```bash
-git clone https://github.com/yranjan06/GhostMCP.git
-cd GhostMCP
+git clone https://github.com/yranjan06/WEBGhosting-MCP.git
+cd WEBGhosting-MCP
 make install-deps
 make build
 ```
@@ -73,9 +73,9 @@ make build
 ```json
 {
   "servers": {
-    "ghostmcp": {
+    "webghosting": {
       "type": "stdio",
-      "command": "/absolute/path/to/GhostMCP/webmcp",
+      "command": "/absolute/path/to/WEBGhosting/webmcp",
       "args": [],
       "env": {
         "AI_API_KEY": "your-api-key",
@@ -94,8 +94,8 @@ Open your MCP configuration file (e.g., `mcp.json` or `claude_desktop_config.jso
 ```json
 {
   "mcpServers": {
-    "ghostmcp": {
-      "command": "/absolute/path/to/GhostMCP/webmcp",
+    "webghosting": {
+      "command": "/absolute/path/to/WEBGhosting/webmcp",
       "env": {
         "AI_API_KEY": "your-api-key",
         "AI_BASE_URL": "https://api.openai.com/v1", 
@@ -110,7 +110,7 @@ Or run with Docker:
 
 ```bash
 make docker
-docker run -p 8080:8080 -e AI_API_KEY="your-key" -e BROWSER_HEADLESS="true" ghostmcp --port=8080
+docker run -p 8080:8080 -e AI_API_KEY="your-key" -e BROWSER_HEADLESS="true" webghosting --port=8080
 ```
 
 ### Try Without an API Key
@@ -136,7 +136,7 @@ python3 examples/test_page_context.py
 
 ## Recipe Orchestrator
 
-The Recipe Orchestrator is GhostMCP's **"brain"** — it turns natural language commands into automated, multi-step browser workflows without writing any Python code.
+The Recipe Orchestrator is WEBGhosting's **"brain"** — it turns natural language commands into automated, multi-step browser workflows without writing any Python code.
 
 ### How It Works
 
@@ -147,7 +147,7 @@ You: "Go to HN and find top story"
 LLM auto-generates a 3-step JSON recipe
   |
   v
-Orchestrator executes each step via GhostMCP browser engine
+Orchestrator executes each step via WEBGhosting browser engine
   |
   v
 Returns structured data, deletes temporary recipe
@@ -215,7 +215,7 @@ Recipes are declarative JSON files with sequential steps:
 
 ## Selector Database
 
-GhostMCP ships with **55 pre-cached CSS selectors** across **12 major websites**, stored in `orchestrator/selectors/` as per-website JSON files:
+WEBGhosting ships with **55 pre-cached CSS selectors** across **12 major websites**, stored in `orchestrator/selectors/` as per-website JSON files:
 
 ```
 orchestrator/selectors/
@@ -307,7 +307,7 @@ pkg/                      # Core Go packages
   agent/                  # LLM-powered element finding + data extraction
 
 examples/                 # Python demo scripts
-  client.py               # GhostMCPClient — Python wrapper for MCP
+  client.py               # WEBGhostingClient — Python wrapper for MCP
   e2e_voice_demo.py       # Cinematic demo: HN -> Reddit -> LinkedIn
 ```
 
@@ -317,13 +317,13 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## Star History
 
-If you find GhostMCP useful, please give it a star — it helps the project grow!
+If you find WEBGhosting useful, please give it a star — it helps the project grow!
 
-<a href="https://star-history.com/#yranjan06/GhostMCP&Date">
+<a href="https://star-history.com/#yranjan06/WEBGhosting-MCP&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yranjan06/GhostMCP&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yranjan06/GhostMCP&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yranjan06/GhostMCP&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yranjan06/WEBGhosting-MCP&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yranjan06/WEBGhosting-MCP&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yranjan06/WEBGhosting-MCP&type=Date" />
   </picture>
 </a>
 
@@ -331,7 +331,7 @@ If you find GhostMCP useful, please give it a star — it helps the project grow
 
 <p align="center">
   Built with ❤️ for the AI community<br/>
-  <a href="https://github.com/yranjan06/GhostMCP">GitHub</a> &bull;
-  <a href="https://github.com/yranjan06/GhostMCP/issues">Issues</a> &bull;
+  <a href="https://github.com/yranjan06/WEBGhosting-MCP">GitHub</a> &bull;
+  <a href="https://github.com/yranjan06/WEBGhosting-MCP/issues">Issues</a> &bull;
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>

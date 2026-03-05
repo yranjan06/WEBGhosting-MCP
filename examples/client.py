@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Shared GhostMCP Python Client
+Shared WEBGhosting Python Client
 Reusable MCP stdio client for all example scripts.
 
 Usage:
-    from client import GhostMCPClient
-    client = GhostMCPClient()
+    from client import WEBGhostingClient
+    client = WEBGhostingClient()
     client.call("browse", {"url": "https://example.com"})
     client.close()
 """
@@ -25,8 +25,8 @@ BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
 
-class GhostMCPClient:
-    """MCP stdio client for GhostMCP server.
+class WEBGhostingClient:
+    """MCP stdio client for WEBGhosting server.
 
     Reads API config from environment variables:
         AI_API_KEY  (required)
@@ -56,7 +56,7 @@ class GhostMCPClient:
         msg = self._rpc("initialize", {
             "protocolVersion": "2024-11-05",
             "capabilities": {},
-            "clientInfo": {"name": "ghostmcp-client", "version": "1.0"}
+            "clientInfo": {"name": "webghosting-client", "version": "1.0"}
         })
         self.process.stdin.write(msg + '\n')
         self.process.stdin.flush()
@@ -75,7 +75,7 @@ class GhostMCPClient:
             json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + '\n'
         )
         self.process.stdin.flush()
-        print(f"{GREEN}[OK] GhostMCP server initialized{RESET}")
+        print(f"{GREEN}[OK] WEBGhosting server initialized{RESET}")
 
     def _rpc(self, method, params=None):
         msg = {"jsonrpc": "2.0", "method": method, "id": self.req_id}

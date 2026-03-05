@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GhostMCP — SMART Demo: iPhone 15 Price + Review Comparison
+WEBGhosting — SMART Demo: iPhone 15 Price + Review Comparison
 ============================================================
 Strategy: Multi-step agent flow — navigate, click product, scroll to reviews,
           isolate review section, then extract ONLY reviews with LLM.
@@ -58,7 +58,7 @@ def safe_get(item, *keys):
     return "?"
 
 
-client = GhostMCPClient()
+client = WEBGhostingClient()
 
 schema_products = {
     "type": "array",

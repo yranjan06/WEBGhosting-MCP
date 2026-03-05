@@ -3,7 +3,7 @@
 "Watch an AI Agent Research MCP Across Hacker News, Reddit, X, and LinkedIn — Fully Autonomous Browser Control"
 
 A cinematic, multi-tab, cross-site, memory-aware, real-time agent demo.
-This script interfaces with the GhostMCP binary to perform a sequence of
+This script interfaces with the WEBGhosting binary to perform a sequence of
 impressive browser actions simulating a real AI agent researching 
 the "Model Context Protocol".
 """
@@ -26,7 +26,7 @@ MAGENTA = "\033[35m"
 
 
 class WebMCPClient:
-    """Interfaces with the GhostMCP server."""
+    """Interfaces with the WEBGhosting server."""
 
     def __init__(self):
         env = os.environ.copy()
@@ -34,7 +34,7 @@ class WebMCPClient:
         # force the browser to be visible so the user can record it alongside the terminal
         env["BROWSER_HEADLESS"] = "false"
         
-        print(f"{CYAN}🎬 [Scene 0] Initializing GhostMCP Engine...{RESET}")
+        print(f"{CYAN}🎬 [Scene 0] Initializing WEBGhosting Engine...{RESET}")
         
         # Start the webmcp binary
         self.process = subprocess.Popen(
@@ -82,7 +82,7 @@ class WebMCPClient:
                 pass
 
     def call(self, name, args=None):
-        """Calls a specific GhostMCP tool."""
+        """Calls a specific WEBGhosting tool."""
         print(f"{DIM}  > executing: {name}({json.dumps(args) if args else ''}){RESET}")
         self._send("tools/call", {"name": name, "arguments": args or {}})
         resp = self._read_response()

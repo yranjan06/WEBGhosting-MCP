@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GhostMCP -- CINEMATIC DEMO: The 'Voice Command' Scenario
+WEBGhosting -- CINEMATIC DEMO: The 'Voice Command' Scenario
 
 Simulates a high-level user request:
 "Hey Ghost, go to Hacker News, find today's top story, search what Reddit
@@ -22,7 +22,7 @@ def cinematic_sleep(seconds=1.5):
     """Pause briefly so the audience can read what happened on screen."""
     time.sleep(seconds)
 
-client = GhostMCPClient()
+client = WEBGhostingClient()
 
 try:
     print(f"\n{CYAN}{'━'*70}")

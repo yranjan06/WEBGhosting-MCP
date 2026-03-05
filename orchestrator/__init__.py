@@ -1,1 +1,1 @@
-# GhostMCP Orchestrator Package
+# WEBGhosting Orchestrator Package

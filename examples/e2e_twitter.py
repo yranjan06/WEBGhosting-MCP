@@ -5,7 +5,7 @@ import sys, time, json
 sys.path.insert(0, '.')
 from examples.client import *
 
-client = GhostMCPClient()
+client = WEBGhostingClient()
 
 try:
     print(f"\n{CYAN}{'='*50}\n  Twitter: AI Search + Infinite Scroll Extraction\n{'='*50}{RESET}\n")

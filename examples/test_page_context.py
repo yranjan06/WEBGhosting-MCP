@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GhostMCP — Multi-Site Page Context Test
+WEBGhosting — Multi-Site Page Context Test
 ==========================================
 Tests get_page_context on 10 major websites to validate detection accuracy.
 Reports: page_type, features detected, and any issues found.

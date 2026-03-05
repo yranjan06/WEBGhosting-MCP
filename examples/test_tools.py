@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GhostMCP — Core Tool Test Suite
+WEBGhosting — Core Tool Test Suite
 Tests: browse, stealth, type, console logs, accessibility tree, dialog handling
 Uses the local demo/index.html test page.
 """
@@ -9,7 +9,7 @@ import sys, os, json
 sys.path.insert(0, '.')
 from examples.client import *
 
-client = GhostMCPClient()
+client = WEBGhostingClient()
 
 demo_url = f"file://{os.getcwd()}/examples/demo/index.html"
 passed = 0
@@ -25,7 +25,7 @@ def check(name, condition, detail=""):
         print(f"  {RED}FAIL{RESET} {name} {detail}")
 
 try:
-    print(f"\n{CYAN}{'='*50}\n  GhostMCP Core Tool Test Suite\n{'='*50}{RESET}\n")
+    print(f"\n{CYAN}{'='*50}\n  WEBGhosting Core Tool Test Suite\n{'='*50}{RESET}\n")
 
     # TEST 1: Browse + Stealth
     print(f"{BOLD}Browse + Stealth{RESET}")
