@@ -34,8 +34,11 @@ class WEBGhostingClient:
         AI_MODEL    (default: gpt-4o)
     """
 
-    def __init__(self, binary="./webmcp"):
+    def __init__(self, binary="./webmcp", env_overrides=None):
         env = os.environ.copy()
+        if env_overrides:
+            env.update(env_overrides)
+            
         if not env.get("AI_API_KEY"):
             print(f"{RED}ERROR: AI_API_KEY not set!{RESET}")
             print("Run: export AI_API_KEY='your-key-here'")

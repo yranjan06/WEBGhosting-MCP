@@ -293,6 +293,8 @@ EXACT action formats (use these EXACTLY):
 Pre-cached selector catalog (USE THIS FOR ACTION js_from_selector):
 {selectors}
 
+{system_examples}
+
 Variable system: save_as stores results as JSON. Reference via {variable.key} in later steps.
 
 Rules:
@@ -313,6 +315,7 @@ Rules:
 - JSON Escaping: Ensure any raw JS code within JSON string values is properly escaped. Do not use invalid JSON escapes like space followed by \'.
 - Multi-Level Extractions: If you need to read a full post or article from a feed, do NOT try to extract the body from the feed. First, use a JS action to extract its URL (`href`), then use a `browse` action to navigate to that URL, `wait`, and then extract the full body.
 - Safe JS: Always use `|| 'Not found'` or `?.innerText` to prevent script crashes on missing elements."""
+
 
 import os
 import json
@@ -397,6 +400,35 @@ def get_relevant_selectors(command, selectors_db):
     return compact_selectors
 
 
+def get_relevant_examples(command):
+    """Load matching pre-built recipes to act as Few-Shot examples."""
+    cmd_lower = command.lower()
+    examples = []
+    
+    recipes_dir = os.path.join(os.path.dirname(__file__), 'recipes')
+    if not os.path.exists(recipes_dir):
+        return ""
+        
+    # We will just load hn_reddit_linkedin.json if the prompt looks complex or has multiple domains
+    # For a production system, we would map keywords to specific example files
+    if any(word in cmd_lower for word in ['reddit', 'hn', 'hacker news', 'twitter', 'linkedin', 'google']):
+        example_path = os.path.join(recipes_dir, 'hn_reddit_linkedin.json')
+        if os.path.exists(example_path):
+            try:
+                with open(example_path, 'r') as f:
+                    recipe_data = json.load(f)
+                    # Minify the example to save tokens
+                    minified = json.dumps(recipe_data, separators=(',', ':'))
+                    examples.append(minified)
+            except:
+                pass
+                
+    if not examples:
+        return ""
+        
+    return "Here is an example of a perfectly formatted complex recipe:\n" + "\n".join(examples)
+
+
 def generate_recipe(command, selectors_db):
     """Use LLM to generate a JSON recipe from a natural language command."""
     api_key = os.environ.get("AI_API_KEY")
@@ -409,9 +441,12 @@ def generate_recipe(command, selectors_db):
 
     # [OPTIMIZATION] Token-Efficient Smart Router
     compact_selectors = get_relevant_selectors(command, selectors_db)
-
     selectors_summary = json.dumps(compact_selectors, indent=2)
-    system_prompt = RECIPE_SYSTEM_PROMPT.replace("{selectors}", selectors_summary)
+    
+    # [OPTIMIZATION] Few-Shot Example Injection (RAG)
+    system_examples = get_relevant_examples(command)
+    
+    system_prompt = RECIPE_SYSTEM_PROMPT.replace("{selectors}", selectors_summary).replace("{system_examples}", system_examples)
 
     print(f"{CYAN}  Generating recipe for: {BOLD}\"{command}\"{RESET}")
     print(f"{DIM}  Asking LLM to create execution plan...{RESET}")
@@ -432,7 +467,7 @@ def generate_recipe(command, selectors_db):
                 "temperature": 0.2,
                 "max_tokens": 2000
             },
-            timeout=30
+            timeout=90
         )
         if not resp.ok:
             print(f"{RED}  LLM API error ({resp.status_code}): {resp.text}{RESET}")
@@ -490,6 +525,7 @@ class RecipeOrchestrator:
         selectors_dir = os.path.join(os.path.dirname(__file__), 'selectors')
         if os.path.isdir(selectors_dir):
             for f in sorted(glob.glob(os.path.join(selectors_dir, '*.json'))):
+                if os.path.basename(f) == "selector_usage.json": continue
                 with open(f) as fp:
                     data = json.load(fp)
                     self.selectors.update(data)
@@ -689,7 +725,7 @@ class RecipeOrchestrator:
                 return self.execute_step(step)
             return False
 
-    def run(self, recipe_path, resume_from=0):
+    def run(self, recipe_path, resume_from=0, proxy=None):
         """Load and execute a JSON recipe file, with checkpoint support."""
         with open(recipe_path) as f:
             recipe = json.load(f)
@@ -724,7 +760,14 @@ class RecipeOrchestrator:
         print(f"{CYAN}{start_label}")
         print(f"{'━'*60}{RESET}\n")
 
-        self.client = WEBGhostingClient()
+        # Inject proxy if provided
+        env_vars = {}
+        if proxy:
+            env_vars["HTTP_PROXY"] = proxy
+            print(f"{DIM}  [NETWORK] Using IP/Proxy: {proxy}{RESET}")
+
+        from examples.client import WEBGhostingClient
+        self.client = WEBGhostingClient(env_overrides=env_vars)
 
         try:
             for i, step in enumerate(steps):
@@ -782,6 +825,21 @@ class RecipeOrchestrator:
 
     def run_command(self, command):
         """Generate a recipe from natural language and execute it."""
+        print(f"{CYAN}{BOLD}  Analyzing prompt and injecting few-shot context...{RESET}")
+        
+        # Load proxy if available
+        proxy = None
+        try:
+            if os.environ.get("PROXY_LIST"):
+                proxies = os.environ.get("PROXY_LIST").split(',')
+                if proxies: proxy = proxies[0]
+            elif os.path.exists("proxies.txt"):
+                with open("proxies.txt", "r") as pf:
+                    proxies = [l.strip() for l in pf if l.strip()]
+                if proxies: proxy = proxies[0]
+        except Exception:
+            pass
+
         recipe = generate_recipe(command, self.selectors)
         if not recipe:
             print(f"{RED}  Failed to generate recipe.{RESET}")
@@ -793,7 +851,7 @@ class RecipeOrchestrator:
         print(f"{DIM}  Temporary recipe: {tmp_path}{RESET}\n")
 
         try:
-            success = self.run(tmp_path)
+            success = self.run(tmp_path, proxy=proxy)
             
             # [OPTIMIZATION] Self-Improving Usage Feedback Loop
             if success and recipe:
