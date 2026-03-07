@@ -1,0 +1,79 @@
+{
+    "name": "Reddit Trending to Twitter Thread Draft",
+    "steps": [
+        {
+            "id": 1,
+            "action": "narrate",
+            "narrate": "Opening Reddit's r/LocalLLaMA..."
+        },
+        {
+            "id": 2,
+            "action": "browse",
+            "url": "https://www.reddit.com/r/LocalLLaMA/top/?t=day"
+        },
+        {
+            "id": 3,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 4,
+            "action": "narrate",
+            "narrate": "Scraping the top trending post title and upvotes..."
+        },
+        {
+            "id": 5,
+            "action": "js",
+            "code": "(() => { const title = document.querySelector('h3.i18n-list-item-post-title')?.innerText; const link = document.querySelector('a[href*=\"/comments/\"]')?.href; return JSON.stringify({ title, link }); })()",
+            "save_as": "reddit_trend"
+        },
+        {
+            "id": 6,
+            "action": "narrate",
+            "narrate": "Opening the top post discussion..."
+        },
+        {
+            "id": 7,
+            "action": "browse",
+            "url": "{reddit_trend.link}"
+        },
+        {
+            "id": 8,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 9,
+            "action": "narrate",
+            "narrate": "Extracting the top comment opinion..."
+        },
+        {
+            "id": 10,
+            "action": "js",
+            "code": "(() => { const comment = document.querySelector('shreddit-comment div[slot=\"comment\"]')?.innerText; return JSON.stringify(comment ? comment.trim().slice(0, 200) + '...' : 'No comment found'); })()",
+            "save_as": "top_comment"
+        },
+        {
+            "id": 11,
+            "action": "narrate",
+            "narrate": "Drafting Twitter engaging thread in isolated workspace..."
+        },
+        {
+            "id": 12,
+            "action": "browse",
+            "url": "https://notepad.pw/webghosting-drafts"
+        },
+        {
+            "id": 13,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 14,
+            "action": "type_to_notepad",
+            "selector": "textarea#area",
+            "template": "Wild how fast LocalLLaMA moves. Today's top topic:\n\"{reddit_trend.title}\"\n\nTop community takeaway:\n\"{top_comment}\"\n\nThoughts on this?\n#LocalLLaMA #AI #OpenSource",
+            "speed_ms": 15
+        }
+    ]
+}

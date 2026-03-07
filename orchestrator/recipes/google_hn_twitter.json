@@ -1,0 +1,64 @@
+{
+    "name": "Google to HN to Twitter Draft",
+    "steps": [
+        {
+            "id": 1,
+            "action": "narrate",
+            "narrate": "Opening Google Search..."
+        },
+        {
+            "id": 2,
+            "action": "browse",
+            "url": "https://www.google.com/"
+        },
+        {
+            "id": 3,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 4,
+            "action": "search",
+            "selector": "textarea#APjFqb",
+            "query": "site:news.ycombinator.com AI Devin update"
+        },
+        {
+            "id": 5,
+            "action": "wait",
+            "seconds": 2
+        },
+        {
+            "id": 6,
+            "action": "narrate",
+            "narrate": "Extracting the top Hacker News search result..."
+        },
+        {
+            "id": 7,
+            "action": "js",
+            "code": "(() => { const el = document.querySelector('a h3'); return JSON.stringify(el ? { title: el.innerText, href: el.closest('a').href } : null); })()",
+            "save_as": "hn_post_data"
+        },
+        {
+            "id": 8,
+            "action": "narrate",
+            "narrate": "Drafting Twitter (X) thread based on the Hacker News result..."
+        },
+        {
+            "id": 9,
+            "action": "browse",
+            "url": "https://notepad.pw/webghosting-drafts"
+        },
+        {
+            "id": 10,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 11,
+            "action": "type_to_notepad",
+            "selector": "textarea#area",
+            "template": "Just saw this popping off on Hacker News: {hn_post_data.title}\n\nRead the full discussion here: {hn_post_data.href}\n\n#AI #TechNews #HackerNews",
+            "speed_ms": 15
+        }
+    ]
+}
