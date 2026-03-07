@@ -121,6 +121,11 @@ type RunTaskArgs struct {
 
 type ListRecipesArgs struct{}
 
+type ReframePromptArgs struct {
+	Prompt      string `json:"prompt" jsonschema:"required,description=The raw user prompt in any language (Hindi/Hinglish/English/etc). Can be casual or vague."`
+	PageContext string `json:"page_context,omitempty" jsonschema:"description=Optional current page context (page type and features) to help resolve ambiguous references like 'that button'"`
+}
+
 type FormField struct {
 	Selector string `json:"selector" jsonschema:"required,description=CSS selector of the input element"`
 	Value    string `json:"value" jsonschema:"required,description=Value to fill in"`
@@ -147,8 +152,33 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Successfully navigated to %s", args.URL))), nil
 	}))
 
+	// ─── reframe_user_prompt ───
+	must(server.RegisterTool("reframe_user_prompt", "Reframe a casual, multilingual, or vague user prompt into a precise, structured English command. Supports Hindi, Hinglish, Spanish, and any language. Returns structured JSON with clear_task, intent, required_steps, target_element, confidence, and language detection. Use this before passing prompts to other tools for best results.", func(args ReframePromptArgs) (*mcp_golang.ToolResponse, error) {
+		if aiAgent == nil {
+			return nil, fmt.Errorf("AI agent not initialized (missing API key?)")
+		}
+		log.Printf("%s[REFRAME]%s Reframing prompt: '%s'", ColorCyan, ColorReset, args.Prompt)
+
+		// If no page context provided, try to get it from current page
+		pageCtx := args.PageContext
+		if pageCtx == "" {
+			if ctx, err := engine.GetPageContext(); err == nil {
+				pageCtx = fmt.Sprintf("Page: %s | Type: %s | URL: %s", ctx.Title, ctx.PageType, ctx.URL)
+			}
+		}
+
+		reframed, err := aiAgent.ReframePrompt(args.Prompt, pageCtx)
+		if err != nil {
+			return nil, fmt.Errorf("reframe failed: %w", err)
+		}
+
+		resultJSON, _ := json.MarshalIndent(reframed, "", "  ")
+		log.Printf("%s[REFRAME]%s ✓ '%s' → '%s' (intent: %s, confidence: %.2f)", ColorGreen, ColorReset, args.Prompt, reframed.ClearTask, reframed.Intent, reframed.Confidence)
+		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(string(resultJSON))), nil
+	}))
+
 	// ─── click ───
-	must(server.RegisterTool("click", "Click an element identified by a natural language prompt", func(args ClickArgs) (*mcp_golang.ToolResponse, error) {
+	must(server.RegisterTool("click", "Click an element identified by a natural language prompt. Supports multilingual input — prompts are auto-reframed from Hindi/Hinglish/any language to precise English before element finding.", func(args ClickArgs) (*mcp_golang.ToolResponse, error) {
 		// Smart Fallback: If prompt is actually a URL, just bypass AI and browse to it directly!
 		if strings.HasPrefix(strings.ToLower(args.Prompt), "http://") || strings.HasPrefix(strings.ToLower(args.Prompt), "https://") {
 			log.Printf("%s[CLICK]%s Prompt is a URL '%s'. Falling back to direct navigation.", ColorBlue, ColorReset, args.Prompt)
@@ -161,14 +191,30 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		if aiAgent == nil {
 			return nil, fmt.Errorf("AI agent not initialized")
 		}
-		log.Printf("%s[CLICK]%s Looking for element: '%s'", ColorBlue, ColorReset, args.Prompt)
+
+		// ── Reframe: casual/multilingual → precise English ──
+		prompt := args.Prompt
+		var pageCtx string
+		if ctx, err := engine.GetPageContext(); err == nil {
+			pageCtx = fmt.Sprintf("Page: %s | Type: %s | URL: %s", ctx.Title, ctx.PageType, ctx.URL)
+		}
+		if reframed, err := aiAgent.ReframePrompt(prompt, pageCtx); err == nil && reframed.WasReframed {
+			log.Printf("%s[CLICK]%s Reframed: '%s' → '%s'", ColorCyan, ColorReset, prompt, reframed.ClearTask)
+			if reframed.TargetElement != "" {
+				prompt = reframed.TargetElement
+			} else {
+				prompt = reframed.ClearTask
+			}
+		}
+
+		log.Printf("%s[CLICK]%s Looking for element: '%s'", ColorBlue, ColorReset, prompt)
 
 		page, err := engine.Page()
 		if err != nil {
 			return nil, fmt.Errorf("browser not ready: %w", err)
 		}
 
-		selector, err := aiAgent.FindElement(page, args.Prompt)
+		selector, err := aiAgent.FindElement(page, prompt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find element: %w", err)
 		}
@@ -180,18 +226,34 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 	}))
 
 	// ─── type ───
-	must(server.RegisterTool("type", "Type text into an element identified by a natural language prompt", func(args TypeArgs) (*mcp_golang.ToolResponse, error) {
+	must(server.RegisterTool("type", "Type text into an element identified by a natural language prompt. Supports multilingual input — prompts are auto-reframed from Hindi/Hinglish/any language to precise English before element finding.", func(args TypeArgs) (*mcp_golang.ToolResponse, error) {
 		if aiAgent == nil {
 			return nil, fmt.Errorf("AI agent not initialized")
 		}
-		log.Printf("%s[TYPE]%s Looking for element: '%s' to type '%s'", ColorBlue, ColorReset, args.Prompt, args.Text)
+
+		// ── Reframe: casual/multilingual → precise English ──
+		prompt := args.Prompt
+		var pageCtx string
+		if ctx, err := engine.GetPageContext(); err == nil {
+			pageCtx = fmt.Sprintf("Page: %s | Type: %s | URL: %s", ctx.Title, ctx.PageType, ctx.URL)
+		}
+		if reframed, err := aiAgent.ReframePrompt(prompt, pageCtx); err == nil && reframed.WasReframed {
+			log.Printf("%s[TYPE]%s Reframed: '%s' → '%s'", ColorCyan, ColorReset, prompt, reframed.ClearTask)
+			if reframed.TargetElement != "" {
+				prompt = reframed.TargetElement
+			} else {
+				prompt = reframed.ClearTask
+			}
+		}
+
+		log.Printf("%s[TYPE]%s Looking for element: '%s' to type '%s'", ColorBlue, ColorReset, prompt, args.Text)
 
 		page, err := engine.Page()
 		if err != nil {
 			return nil, fmt.Errorf("browser not ready: %w", err)
 		}
 
-		selector, err := aiAgent.FindElement(page, args.Prompt)
+		selector, err := aiAgent.FindElement(page, prompt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find element: %w", err)
 		}
@@ -591,9 +653,19 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 	}))
 
 	// ─── Orchestrator: run_task ───
-	must(server.RegisterTool("run_task", "Execute a browser automation task described in natural language. The orchestrator will auto-generate a JSON recipe using the LLM, execute it, and clean up. Example: 'Go to Hacker News and find the top story title'. Requires AI_API_KEY to be set.", func(args RunTaskArgs) (*mcp_golang.ToolResponse, error) {
-		log.Printf("%s[TASK]%s Running task: %s", ColorBlue, ColorReset, args.Command)
-		out, err := runOrchestratorCommand([]string{"--run", args.Command})
+	must(server.RegisterTool("run_task", "Execute a browser automation task described in natural language. Supports multilingual input — commands are auto-reframed from Hindi/Hinglish/any language to precise English before recipe generation. The orchestrator will auto-generate a JSON recipe using the LLM, execute it, and clean up. Example: 'Go to Hacker News and find the top story title'. Requires AI_API_KEY to be set.", func(args RunTaskArgs) (*mcp_golang.ToolResponse, error) {
+		command := args.Command
+
+		// ── Reframe: casual/multilingual → precise English ──
+		if aiAgent != nil {
+			if reframed, err := aiAgent.ReframePrompt(command, ""); err == nil && reframed.WasReframed {
+				log.Printf("%s[TASK]%s Reframed: '%s' → '%s'", ColorCyan, ColorReset, command, reframed.ClearTask)
+				command = reframed.ClearTask
+			}
+		}
+
+		log.Printf("%s[TASK]%s Running task: %s", ColorBlue, ColorReset, command)
+		out, err := runOrchestratorCommand([]string{"--run", command})
 		if err != nil {
 			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Task failed: %v\nOutput:\n%s", err, out))), nil
 		}

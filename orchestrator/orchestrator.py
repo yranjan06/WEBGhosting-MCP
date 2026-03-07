@@ -409,17 +409,29 @@ def get_relevant_examples(command):
     if not os.path.exists(recipes_dir):
         return ""
         
-    # We will just load hn_reddit_linkedin.json if the prompt looks complex or has multiple domains
-    # For a production system, we would map keywords to specific example files
-    if any(word in cmd_lower for word in ['reddit', 'hn', 'hacker news', 'twitter', 'linkedin', 'google']):
-        example_path = os.path.join(recipes_dir, 'hn_reddit_linkedin.json')
-        if os.path.exists(example_path):
+    # Extract prompt keywords
+    prompt_words = set(re.findall(r'\b\w+\b', cmd_lower))
+    
+    # Check all recipe JSON files in the recipes folder
+    recipe_files = glob.glob(os.path.join(recipes_dir, '*.json'))
+    
+    for example_path in recipe_files:
+        filename = os.path.basename(example_path).lower()
+        
+        # If the recipe filename shares any keyword with the user's prompt (e.g., 'reddit', 'google', 'twitter')
+        file_keywords = set(re.findall(r'\b\w+\b', filename.replace('.json', '')))
+        
+        # Or if we just want to load the most comprehensive one as a generic fallback
+        is_comprehensive = 'hn_reddit_linkedin' in filename
+        
+        if prompt_words.intersection(file_keywords) or is_comprehensive:
             try:
                 with open(example_path, 'r') as f:
                     recipe_data = json.load(f)
                     # Minify the example to save tokens
                     minified = json.dumps(recipe_data, separators=(',', ':'))
                     examples.append(minified)
+                    break # Stop after finding 1 good example to save tokens, or modify to append multiple
             except:
                 pass
                 
@@ -427,6 +439,134 @@ def get_relevant_examples(command):
         return ""
         
     return "Here is an example of a perfectly formatted complex recipe:\n" + "\n".join(examples)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Prompt Reframer (RefAIne + CO-STAR + Stagehand inspired)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Hindi/Hinglish markers that indicate reframing is needed
+_REFRAME_MARKERS = [
+    "karo", "kro", "kardo", "kar do", "bhai", "yaar", "bata", "batao",
+    "daba", "dabao", "press karo", "khol", "kholo", "daal", "daalo",
+    "likh", "likho", "nikal", "nikalo", "dhundh", "dhundho", "jao",
+    "dikhao", "dikha", "wala", "wali", "wale", "mein", " pe ", " ko ",
+    "chahiye", "de do", "dedo", "kr do", "krdo", "seedha", "sidha",
+    "kaise", "kya", "kaha", "kidhar", "upar", "neeche", "phir", "pehle",
+]
+
+# Cache reframed prompts in-memory to avoid redundant LLM calls
+_reframe_cache = {}
+
+
+def _needs_reframe(text):
+    """Quick check if text needs LLM reframing (non-English or very casual)."""
+    text_lower = text.lower().strip()
+    
+    # Already a URL → skip
+    if text_lower.startswith(("http://", "https://")):
+        return False
+    
+    # Has non-ASCII chars (likely Hindi/other script)
+    if any(ord(c) > 127 for c in text):
+        return True
+    
+    # Contains Hindi/Hinglish markers
+    for marker in _REFRAME_MARKERS:
+        if marker in text_lower:
+            return True
+    
+    # Very short + vague
+    if len(text.split()) <= 2:
+        return True
+    
+    return False
+
+
+def reframe_prompt(raw_prompt, api_key, base_url, model):
+    """Reframe a casual/multilingual prompt into precise English.
+    
+    Architecture:
+      - RefAIne style: single-call refinement
+      - CO-STAR framework: Context/Objective/Style/Tone/Audience/Response
+      - Stagehand patterns: decompose into browser primitives
+    
+    Returns the reframed English prompt, or original if no reframing needed.
+    """
+    raw_prompt = raw_prompt.strip()
+    
+    # Fast path: already clean English
+    if not _needs_reframe(raw_prompt):
+        return raw_prompt
+    
+    # Cache check
+    if raw_prompt in _reframe_cache:
+        cached = _reframe_cache[raw_prompt]
+        print(f"  {DIM}[REFRAME] Cache hit{RESET}")
+        return cached
+    
+    reframe_system = """You are a Prompt Reframer for a browser automation system called WEBGhosting.
+
+Your job: Convert casual, multilingual, vague user prompts into precise, clear English commands.
+
+Input: User prompt in any language (Hindi, Hinglish, Spanish, broken English, slang, etc.)
+Output: ONLY the reframed English command. Nothing else. No JSON, no explanation.
+
+Translation rules:
+- "karo"/"kro"/"kar do" = do/perform
+- "daba do"/"dabao" = click/press  
+- "likh do"/"likho" = type/write
+- "khol do"/"kholo"/"jao" = open/go to/navigate
+- "nikal do"/"nikalo"/"bata do" = extract/get/show
+- "dhundh do"/"dhundho" = search/find
+- "bhai"/"yaar" = strip (filler words)
+- "wo wala" = that/the specific one
+- "upar/neeche" = scroll up/down
+
+Site aliases:
+- "HN" = Hacker News (https://news.ycombinator.com)
+- "reddit" = Reddit (https://www.reddit.com)
+- "flipkart" = Flipkart (https://www.flipkart.com)
+- "amazon" = Amazon (https://www.amazon.in)
+
+Rules:
+1. Output ONLY the reframed English text
+2. Keep it concise and action-oriented
+3. Resolve vagueness where possible
+4. Expand abbreviated site names to full names
+5. NO quotes, NO JSON, NO explanation — just the clean command"""
+
+    reframe_model = os.environ.get("REFRAME_MODEL", model)
+    
+    try:
+        resp = requests.post(
+            f"{base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": reframe_model,
+                "messages": [
+                    {"role": "system", "content": reframe_system},
+                    {"role": "user", "content": raw_prompt}
+                ],
+                "temperature": 0.1,
+                "max_tokens": 256
+            },
+            timeout=30
+        )
+        if resp.ok:
+            reframed = resp.json()["choices"][0]["message"]["content"].strip()
+            # Strip any quotes the LLM might have added
+            reframed = reframed.strip('"\'')
+            if reframed and len(reframed) > 3:
+                _reframe_cache[raw_prompt] = reframed
+                return reframed
+    except Exception as e:
+        print(f"  {DIM}[REFRAME] LLM call failed, using original: {e}{RESET}")
+    
+    return raw_prompt
 
 
 def generate_recipe(command, selectors_db):
@@ -438,6 +578,12 @@ def generate_recipe(command, selectors_db):
     if not api_key:
         print(f"{RED}ERROR: AI_API_KEY not set{RESET}")
         return None
+
+    # [REFRAME] Reframe casual/multilingual prompt before recipe generation
+    reframed_command = reframe_prompt(command, api_key, base_url, model)
+    if reframed_command != command:
+        print(f"  {CYAN}[REFRAME] '{command}' → '{reframed_command}'{RESET}")
+        command = reframed_command
 
     # [OPTIMIZATION] Token-Efficient Smart Router
     compact_selectors = get_relevant_selectors(command, selectors_db)
