@@ -11,7 +11,7 @@ const (
 	ColorCyan   = "\033[36m"
 	ColorDim    = "\033[2m"
 	ColorBold   = "\033[1m"
-	SymCheck    = "✓"
+	SymCheck    = "»"
 	SymCross    = "✗"
 	SymWarn     = "⚠"
 	SymArrow    = "→"

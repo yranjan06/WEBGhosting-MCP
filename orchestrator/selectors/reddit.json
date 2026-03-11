@@ -31,11 +31,13 @@
         ]
     },
     "reddit.post_title": {
-        "selector": "h3.i18n-list-item-post-title",
-        "fallback": "shreddit-post [slot='title']",
+        "selector": "a[slot='full-post-link']",
+        "fallback": "shreddit-post a[slot='full-post-link'], h3.i18n-list-item-post-title",
         "extract": [
-            "innerText"
+            "innerText",
+            "href"
         ],
+        "notes": "New Reddit (2024+) uses shreddit-post Web Components. Use a[slot='full-post-link'] to get title text AND href. Old fallback h3 may still work on some views.",
         "tags": [
             "read",
             "core",
@@ -155,6 +157,16 @@
         "tags": [
             "read",
             "core",
+            "extract",
+            "data"
+        ]
+    },
+    "reddit.extract_top_n": {
+        "script": "(() => { const posts = Array.from(document.querySelectorAll('shreddit-post')).slice(0, 5); return JSON.stringify(posts.map(p => ({ title: p.getAttribute('post-title') || p.querySelector('a[slot=\"full-post-link\"]')?.innerText || 'N/A', url: p.getAttribute('content-href') || p.querySelector('a[slot=\"full-post-link\"]')?.href || '', author: p.getAttribute('author') || '', score: p.getAttribute('score') || '0', comments: p.getAttribute('comment-count') || '0' }))); })()",
+        "notes": "Extracts top 5 Reddit posts using shreddit-post Web Component attributes (post-title, content-href, author, score, comment-count). Works on new Reddit 2024+ layout.",
+        "tags": [
+            "core",
+            "read",
             "extract",
             "data"
         ]

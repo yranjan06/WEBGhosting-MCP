@@ -12,12 +12,13 @@ Usage:
     python3 -m orchestrator.orchestrator --list
 """
 
-import sys, os, json, time, glob, tempfile, hashlib, requests
+import sys, os, json, time, glob, tempfile, hashlib, requests, re
 from datetime import datetime, timezone
 
 # Allow running from project root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from examples.client import WEBGhostingClient, GREEN, RED, YELLOW, CYAN, DIM, BOLD, RESET
+from orchestrator.ui import Spinner, panel, table, step_header, pipeline_banner, recipe_banner, results_panel, stats_summary, info_msg, success_msg, error_msg, warn_msg, C, progress_bar
 
 CHECKPOINT_DIR = os.path.join(tempfile.gettempdir(), "webghosting_checkpoints")
 
@@ -323,6 +324,19 @@ import re
 
 SELECTOR_USAGE_FILE = os.path.join(os.path.dirname(__file__), "selectors", "selector_usage.json")
 
+# ━━━ Token Usage Tracker ━━━
+_token_usage = {"reframe_in": 0, "reframe_out": 0, "recipe_in": 0, "recipe_out": 0, "calls": 0}
+
+def _track_tokens(resp_json, stage):
+    """Extract and accumulate token usage from LLM API response."""
+    usage = resp_json.get("usage", {})
+    prompt_tokens = usage.get("prompt_tokens", 0)
+    completion_tokens = usage.get("completion_tokens", 0)
+    _token_usage[f"{stage}_in"] += prompt_tokens
+    _token_usage[f"{stage}_out"] += completion_tokens
+    _token_usage["calls"] += 1
+    return prompt_tokens, completion_tokens
+
 def load_selector_usage():
     if os.path.exists(SELECTOR_USAGE_FILE):
         try:
@@ -390,13 +404,15 @@ def get_relevant_selectors(command, selectors_db):
     top_selectors = valid_selectors[:MAX_SELECTORS]
 
     # Strip out raw JS scripts and filter to save massive amounts of tokens
-    compact_selectors = {
-        k: {prop: v[prop] for prop in ['selector', 'notes', 'extract'] if prop in v}
-        for k, v in top_selectors
-    }
+    compact_selectors = {}
+    for k, v in top_selectors:
+        sel = {prop: v[prop] for prop in ['selector', 'notes', 'extract'] if prop in v}
+        if 'script' in v:
+            sel['is_script'] = True
+        compact_selectors[k] = sel
             
     p_names = ', '.join([p.strip('.') for p in prefixes])
-    print(f"{DIM}  [ROUTER] Injecting Top {len(top_selectors)} Selectors for: {p_names}{RESET}")
+
     return compact_selectors
 
 
@@ -444,14 +460,15 @@ def get_relevant_examples(command):
                 recipe_data = json.load(f)
                 minified = json.dumps(recipe_data, separators=(',', ':'))
                 examples.append(minified)
-                print(f"{DIM}  [RAG] Injecting example: {os.path.basename(example_path)} ({source}){RESET}")
+                matched_name = recipe_data.get('name', os.path.basename(example_path))
+
         except:
-            pass
+            matched_name = None
                 
     if not examples:
-        return ""
+        return "", None
         
-    return "Here is an example of a perfectly formatted complex recipe:\n" + "\n".join(examples)
+    return "Here is an example of a perfectly formatted complex recipe:\n" + "\n".join(examples), matched_name
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -570,7 +587,9 @@ Rules:
             timeout=30
         )
         if resp.ok:
-            reframed = resp.json()["choices"][0]["message"]["content"].strip()
+            resp_data = resp.json()
+            _track_tokens(resp_data, "reframe")
+            reframed = resp_data["choices"][0]["message"]["content"].strip()
             # Strip any quotes the LLM might have added
             reframed = reframed.strip('"\'')
             if reframed and len(reframed) > 3:
@@ -593,9 +612,9 @@ def generate_recipe(command, selectors_db):
         return None
 
     # [REFRAME] Reframe casual/multilingual prompt before recipe generation
+    original_prompt = command
     reframed_command = reframe_prompt(command, api_key, base_url, model)
     if reframed_command != command:
-        print(f"  {CYAN}[REFRAME] '{command}' → '{reframed_command}'{RESET}")
         command = reframed_command
 
     # [OPTIMIZATION] Token-Efficient Smart Router
@@ -603,12 +622,16 @@ def generate_recipe(command, selectors_db):
     selectors_summary = json.dumps(compact_selectors, indent=2)
     
     # [OPTIMIZATION] Few-Shot Example Injection (RAG)
-    system_examples = get_relevant_examples(command)
+    system_examples, example_name = get_relevant_examples(command)
     
+    # Show the pipeline banner
+    domains = ', '.join(sorted(set(k.split('.')[0] for k in compact_selectors.keys()))) or 'general'
+    pipeline_banner(original_prompt, command, domains, example_name, len(compact_selectors))
+
     system_prompt = RECIPE_SYSTEM_PROMPT.replace("{selectors}", selectors_summary).replace("{system_examples}", system_examples)
 
-    print(f"{CYAN}  Generating recipe for: {BOLD}\"{command}\"{RESET}")
-    print(f"{DIM}  Asking LLM to create execution plan...{RESET}")
+    spinner = Spinner("Generating recipe via LLM...", color=C.CYAN)
+    spinner.start()
 
     try:
         resp = requests.post(
@@ -629,9 +652,12 @@ def generate_recipe(command, selectors_db):
             timeout=90
         )
         if not resp.ok:
-            print(f"{RED}  LLM API error ({resp.status_code}): {resp.text}{RESET}")
+            spinner.fail(f"LLM API error ({resp.status_code})")
+            return None
         resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"].strip()
+        resp_data = resp.json()
+        _track_tokens(resp_data, "recipe")
+        content = resp_data["choices"][0]["message"]["content"].strip()
         
         # Extract JSON block between first '{' and last '}'
         start_idx = content.find('{')
@@ -640,7 +666,7 @@ def generate_recipe(command, selectors_db):
         if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
             content = content[start_idx:end_idx+1]
         else:
-            print(f"{RED}  Failed to find JSON object in response.{RESET}")
+            spinner.fail("No JSON found in LLM response")
             return None
 
         # Pre-process content to fix common LLM JSON escaping bugs (like invalid \')
@@ -648,15 +674,16 @@ def generate_recipe(command, selectors_db):
         
         recipe = json.loads(content)
         steps = len(recipe.get("steps", []))
-        print(f"  {GREEN}Recipe generated: \"{recipe.get('name', 'Unnamed')}\" ({steps} steps){RESET}")
+        spinner.stop(f"Recipe ready: \"{recipe.get('name', 'Unnamed')}\" ({steps} steps)")
+        recipe_banner(recipe.get('name', 'Unnamed'), steps)
         return recipe
 
     except requests.exceptions.RequestException as e:
-        print(f"{RED}  LLM API error: {e}{RESET}")
+        spinner.fail(f"LLM API error: {e}")
         return None
     except json.JSONDecodeError as e:
-        print(f"{RED}  Failed to parse LLM response as JSON: {e}{RESET}")
-        print(f"{DIM}  Raw response: {content[:300]}{RESET}")
+        spinner.fail(f"JSON parse error: {e}")
+        info_msg(f"Raw: {content[:200]}")
         return None
 
 
@@ -672,7 +699,10 @@ USER_RECIPES_DIR = os.path.join(USER_PLUGIN_DIR, "recipes")
 def _ensure_plugin_dirs():
     """Create the user plugin directories if they don't exist."""
     for d in [USER_SELECTORS_DIR, USER_RECIPES_DIR]:
-        os.makedirs(d, exist_ok=True)
+        try:
+            os.makedirs(d, exist_ok=True)
+        except (PermissionError, OSError) as e:
+            print(f"{DIM}  [PLUGIN] Cannot create {d}: {e} (user plugins disabled){RESET}")
 
 def _load_selectors_from_dir(directory, selectors_dict):
     """Load all .json selector files from a directory into selectors_dict."""
@@ -961,11 +991,9 @@ class RecipeOrchestrator:
                     resume_from = saved_step + 1
                     self.context = existing.get("context", {})
 
-        print(f"\n{CYAN}{'━'*60}")
-        print(f"  Recipe: {BOLD}{name}{RESET}")
-        start_label = f"  Steps: {total}" if resume_from == 0 else f"  Steps: {total} (resuming from {resume_from})"
-        print(f"{CYAN}{start_label}")
-        print(f"{'━'*60}{RESET}\n")
+        print()
+        if resume_from > 0:
+            info_msg(f"Resuming from step {resume_from}")
 
         # Inject proxy if provided
         env_vars = {}
@@ -1002,23 +1030,9 @@ class RecipeOrchestrator:
 
             # Print final results summary
             if self.context:
-                print(f"\n{CYAN}{'─'*60}")
-                print(f"  {BOLD}Results:{RESET}")
-                print(f"{CYAN}{'─'*60}{RESET}")
-                for key, value in self.context.items():
-                    if isinstance(value, (dict, list)):
-                        formatted = json.dumps(value, indent=2, ensure_ascii=False)
-                        # Truncate very long outputs
-                        if len(formatted) > 1500:
-                            formatted = formatted[:1500] + "\n  ...(truncated)"
-                        print(f"\n  {BOLD}{key}:{RESET}")
-                        for line in formatted.split('\n'):
-                            print(f"  {line}")
-                    else:
-                        print(f"  {BOLD}{key}:{RESET} {str(value)[:500]}")
-                print(f"{CYAN}{'─'*60}{RESET}")
+                results_panel(self.context)
 
-            print(f"\n{GREEN}{BOLD}  Recipe completed successfully.{RESET}\n")
+            success_msg("Recipe completed successfully.")
             return True
 
         except KeyboardInterrupt:
@@ -1032,30 +1046,35 @@ class RecipeOrchestrator:
 
     def run_command(self, command):
         """Generate a recipe from natural language and execute it."""
-        print(f"{CYAN}{BOLD}  Analyzing prompt and injecting few-shot context...{RESET}")
+        run_start = time.time()
+        print()
         
-        # Load proxy if available
+        # Load and ROTATE proxy (random pick for IP rotation)
         proxy = None
         try:
+            import random
             if os.environ.get("PROXY_LIST"):
-                proxies = os.environ.get("PROXY_LIST").split(',')
-                if proxies: proxy = proxies[0]
+                proxies = [p.strip() for p in os.environ.get("PROXY_LIST").split(',') if p.strip()]
+                if proxies:
+                    proxy = random.choice(proxies)
+                    info_msg(f"Rotating IP: {proxy}")
             elif os.path.exists("proxies.txt"):
                 with open("proxies.txt", "r") as pf:
                     proxies = [l.strip() for l in pf if l.strip()]
-                if proxies: proxy = proxies[0]
+                if proxies:
+                    proxy = random.choice(proxies)
+                    info_msg(f"Rotating IP: {proxy}")
         except Exception:
             pass
 
         recipe = generate_recipe(command, self.selectors)
         if not recipe:
-            print(f"{RED}  Failed to generate recipe.{RESET}")
+            error_msg("Failed to generate recipe.")
             return False
 
         tmp_path = os.path.join(tempfile.gettempdir(), f"webghosting_recipe_{int(time.time())}.json")
         with open(tmp_path, 'w') as f:
             json.dump(recipe, f, indent=2)
-        print(f"{DIM}  Temporary recipe: {tmp_path}{RESET}\n")
 
         try:
             success = self.run(tmp_path, proxy=proxy)
@@ -1078,13 +1097,16 @@ class RecipeOrchestrator:
 
                 if updated:
                     save_selector_usage(usage_stats)
-                    print(f"{DIM}  [CACHE] Updated self-learning selector weights.{RESET}")
+
+            # Show run statistics
+            elapsed = time.time() - run_start
+            steps_count = len(recipe.get('steps', []))
+            stats_summary(_token_usage, elapsed, steps_count, recipe.get('name', 'Unknown'))
 
             return success
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
-                print(f"{DIM}  Temporary recipe cleaned up.{RESET}")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

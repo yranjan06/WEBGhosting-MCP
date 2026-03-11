@@ -144,14 +144,14 @@ try:
                     issues.append(f"{key}: expected {expected_val} got {actual_val}")
 
             # Print result
-            status = f"{GREEN}✓ PASS{RESET}" if not issues else f"{RED}✗ FAIL{RESET}"
+            status = f"{GREEN}» PASS{RESET}" if not issues else f"{RED}✗ FAIL{RESET}"
             print(f"  {status}  type={actual_type:<16} links={ctx.get('link_count',0):<5} "
-                  f"search={'✓' if ctx.get('has_search') else '✗'}  "
-                  f"login={'✓' if ctx.get('has_login') else '✗'}  "
-                  f"reviews={'✓' if ctx.get('has_reviews') else '✗'}  "
-                  f"cart={'✓' if ctx.get('has_cart') else '✗'}  "
-                  f"video={'✓' if ctx.get('has_video') else '✗'}  "
-                  f"pagination={'✓' if ctx.get('has_pagination') else '✗'}")
+                  f"search={'»' if ctx.get('has_search') else '✗'}  "
+                  f"login={'»' if ctx.get('has_login') else '✗'}  "
+                  f"reviews={'»' if ctx.get('has_reviews') else '✗'}  "
+                  f"cart={'»' if ctx.get('has_cart') else '✗'}  "
+                  f"video={'»' if ctx.get('has_video') else '✗'}  "
+                  f"pagination={'»' if ctx.get('has_pagination') else '✗'}")
             if issues:
                 for issue in issues:
                     print(f"         {YELLOW}→ {issue}{RESET}")

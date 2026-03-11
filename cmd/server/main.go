@@ -82,7 +82,7 @@ func main() {
 	engine.Humanize = *humanize
 	defer func() {
 		engine.Close()
-		fmt.Fprintf(os.Stderr, "\n  %s✓ Shutdown complete%s\n", ColorDim, ColorReset)
+		fmt.Fprintf(os.Stderr, "\n  %s» Shutdown complete%s\n", ColorDim, ColorReset)
 	}()
 
 	aiAgent, err := agent.New()

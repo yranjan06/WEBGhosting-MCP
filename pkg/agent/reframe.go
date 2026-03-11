@@ -337,7 +337,7 @@ func (a *Agent) ReframePrompt(rawPrompt string, pageContext string) (*ReframedPr
 		result.RequiredSteps = inferStepsLocal(rawPrompt)
 	}
 
-	log.Printf("[REFRAME] ✓ '%s' → '%s' (intent: %s, confidence: %.2f, lang: %s)",
+	log.Printf("[REFRAME] » '%s' → '%s' (intent: %s, confidence: %.2f, lang: %s)",
 		truncate(rawPrompt, 40), truncate(result.ClearTask, 60), result.Intent, result.Confidence, result.Language)
 
 	// ─── Cache the result ───

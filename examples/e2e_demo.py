@@ -54,7 +54,7 @@ class WebMCPClient:
             json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + '\n'
         )
         self.process.stdin.flush()
-        print(f"{GREEN}✓ Engine Ready. The AI is now in control.{RESET}\n")
+        print(f"{GREEN}» Engine Ready. The AI is now in control.{RESET}\n")
         time.sleep(1)
 
     def _send(self, method, params=None):
@@ -142,7 +142,7 @@ def run_demo():
         print(f"{YELLOW}  [Visual] Reading the article...{RESET}")
         client.call("scroll", {"amount": 600})
         cinematic_sleep(2)
-        print(f"{GREEN}✓ Hacker News reading complete.{RESET}\n")
+        print(f"{GREEN}» Hacker News reading complete.{RESET}\n")
 
         # ---------------------------------------------------------
         # Scene 2: Google to Reddit
@@ -179,7 +179,7 @@ def run_demo():
         client.call("scroll", {"amount": 800})
         cinematic_sleep(2)
         
-        print(f"{GREEN}✓ Reddit exploration complete.{RESET}\n")
+        print(f"{GREEN}» Reddit exploration complete.{RESET}\n")
 
         # ---------------------------------------------------------
         # Scene 3: X (Twitter)
@@ -208,7 +208,7 @@ def run_demo():
              "key": "twitter_posts",
              "value": "X Sentiment: Rapid adoption happening across IDEs."
         })
-        print(f"{GREEN}✓ X (Twitter) analysis complete.{RESET}\n")
+        print(f"{GREEN}» X (Twitter) analysis complete.{RESET}\n")
         cinematic_sleep()
 
         # ---------------------------------------------------------
@@ -224,7 +224,7 @@ def run_demo():
         
         print(f"{YELLOW}  [Visual] Taking a normal screenshot...{RESET}")
         client.call("screenshot", {})
-        print(f"{GREEN}✓ Returned to previous context seamlessly.{RESET}\n")
+        print(f"{GREEN}» Returned to previous context seamlessly.{RESET}\n")
         cinematic_sleep()
 
         # ---------------------------------------------------------
@@ -247,7 +247,7 @@ def run_demo():
         print(f"{YELLOW}  [Visual] Executing JS to extract document title...{RESET}")
         title = client.call("execute_js", {"script": "return document.title;"})
         print(f"          {DIM}Title: {title}{RESET}")
-        print(f"{GREEN}✓ LinkedIn analysis complete.{RESET}\n")
+        print(f"{GREEN}» LinkedIn analysis complete.{RESET}\n")
         cinematic_sleep()
 
         # ---------------------------------------------------------
@@ -266,7 +266,7 @@ def run_demo():
         client.call("extract", {
              "schema": {"deep_insight": "string"}
         })
-        print(f"{GREEN}✓ Context maintained.{RESET}\n")
+        print(f"{GREEN}» Context maintained.{RESET}\n")
         cinematic_sleep()
 
         # ---------------------------------------------------------
@@ -285,7 +285,7 @@ def run_demo():
         x_mem = client.call("recall_data", {"key": "twitter_posts"})
         print(f"          {DIM}Recalled X: {x_mem}{RESET}")
         
-        print(f"{GREEN}✓ AI Agent has synthesized understanding across 3 platforms.{RESET}\n")
+        print(f"{GREEN}» AI Agent has synthesized understanding across 3 platforms.{RESET}\n")
         cinematic_sleep()
 
         # ---------------------------------------------------------
@@ -294,7 +294,7 @@ def run_demo():
         print(f"{CYAN}{BOLD}🎬 Scene 8 — Show tab overview{RESET}")
         tabs = client.call("list_tabs", {})
         print(f"{DIM}Open Tabs:\n{tabs}{RESET}")
-        print(f"{GREEN}✓ Perfect state tracking.{RESET}\n")
+        print(f"{GREEN}» Perfect state tracking.{RESET}\n")
         cinematic_sleep(2)
 
         # ---------------------------------------------------------

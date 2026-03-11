@@ -173,7 +173,7 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		}
 
 		resultJSON, _ := json.MarshalIndent(reframed, "", "  ")
-		log.Printf("%s[REFRAME]%s ✓ '%s' → '%s' (intent: %s, confidence: %.2f)", ColorGreen, ColorReset, args.Prompt, reframed.ClearTask, reframed.Intent, reframed.Confidence)
+		log.Printf("%s[REFRAME]%s » '%s' → '%s' (intent: %s, confidence: %.2f)", ColorGreen, ColorReset, args.Prompt, reframed.ClearTask, reframed.Intent, reframed.Confidence)
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(string(resultJSON))), nil
 	}))
 

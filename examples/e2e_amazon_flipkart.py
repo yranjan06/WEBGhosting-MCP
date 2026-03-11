@@ -320,12 +320,12 @@ try:
         if flipkart_reviews:
             print(f"    Flipkart: {len(flipkart_reviews)} reviews extracted")
 
-    print(f"\n  {GREEN}{BOLD}✓ Compare prices and reviews above to find the best deal!{RESET}")
+    print(f"\n  {GREEN}{BOLD}» Compare prices and reviews above to find the best deal!{RESET}")
 
     print(f"\n{GREEN}{'='*60}")
     print(f"  DEMO COMPLETE")
-    print(f"  ✓ Stealth verified | ✓ Page context | ✓ Review isolation")
-    print(f"  ✓ Multi-tab | ✓ LLM used ONLY on targeted sections")
+    print(f"  » Stealth verified | » Page context | » Review isolation")
+    print(f"  » Multi-tab | » LLM used ONLY on targeted sections")
     print(f"{'='*60}{RESET}\n")
 
 except Exception as e:
