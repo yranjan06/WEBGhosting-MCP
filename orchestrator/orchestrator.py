@@ -401,39 +401,52 @@ def get_relevant_selectors(command, selectors_db):
 
 
 def get_relevant_examples(command):
-    """Load matching pre-built recipes to act as Few-Shot examples."""
+    """Load matching pre-built recipes from built-in AND user plugin directories."""
     cmd_lower = command.lower()
     examples = []
     
-    recipes_dir = os.path.join(os.path.dirname(__file__), 'recipes')
-    if not os.path.exists(recipes_dir):
-        return ""
-        
     # Extract prompt keywords
     prompt_words = set(re.findall(r'\b\w+\b', cmd_lower))
     
-    # Check all recipe JSON files in the recipes folder
-    recipe_files = glob.glob(os.path.join(recipes_dir, '*.json'))
+    # Scan ALL recipe directories (built-in + user plugins)
+    all_recipe_dirs = _get_all_recipe_dirs()
     
-    for example_path in recipe_files:
-        filename = os.path.basename(example_path).lower()
+    best_match = None
+    best_score = 0
+    fallback = None
+    
+    for recipes_dir in all_recipe_dirs:
+        recipe_files = glob.glob(os.path.join(recipes_dir, '*.json'))
+        source = "PLUGIN" if recipes_dir == USER_RECIPES_DIR else "BUILT-IN"
         
-        # If the recipe filename shares any keyword with the user's prompt (e.g., 'reddit', 'google', 'twitter')
-        file_keywords = set(re.findall(r'\b\w+\b', filename.replace('.json', '')))
-        
-        # Or if we just want to load the most comprehensive one as a generic fallback
-        is_comprehensive = 'hn_reddit_linkedin' in filename
-        
-        if prompt_words.intersection(file_keywords) or is_comprehensive:
-            try:
-                with open(example_path, 'r') as f:
-                    recipe_data = json.load(f)
-                    # Minify the example to save tokens
-                    minified = json.dumps(recipe_data, separators=(',', ':'))
-                    examples.append(minified)
-                    break # Stop after finding 1 good example to save tokens, or modify to append multiple
-            except:
-                pass
+        for example_path in recipe_files:
+            filename = os.path.basename(example_path).lower()
+            file_keywords = set(re.findall(r'\b\w+\b', filename.replace('.json', '')))
+            
+            # Count how many prompt keywords match the filename
+            overlap = len(prompt_words.intersection(file_keywords))
+            
+            if overlap > best_score:
+                best_score = overlap
+                best_match = (example_path, source)
+            
+            # Keep hn_reddit_linkedin as generic fallback
+            if 'hn_reddit_linkedin' in filename and fallback is None:
+                fallback = (example_path, source)
+    
+    # Use best keyword match, or fallback
+    chosen = best_match if best_score > 0 else fallback
+    
+    if chosen:
+        example_path, source = chosen
+        try:
+            with open(example_path, 'r') as f:
+                recipe_data = json.load(f)
+                minified = json.dumps(recipe_data, separators=(',', ':'))
+                examples.append(minified)
+                print(f"{DIM}  [RAG] Injecting example: {os.path.basename(example_path)} ({source}){RESET}")
+        except:
+            pass
                 
     if not examples:
         return ""
@@ -648,6 +661,48 @@ def generate_recipe(command, selectors_db):
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Plugin System
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# User plugin directory: ~/.webghosting/plugins/
+USER_PLUGIN_DIR = os.path.join(os.path.expanduser("~"), ".webghosting", "plugins")
+USER_SELECTORS_DIR = os.path.join(USER_PLUGIN_DIR, "selectors")
+USER_RECIPES_DIR = os.path.join(USER_PLUGIN_DIR, "recipes")
+
+def _ensure_plugin_dirs():
+    """Create the user plugin directories if they don't exist."""
+    for d in [USER_SELECTORS_DIR, USER_RECIPES_DIR]:
+        os.makedirs(d, exist_ok=True)
+
+def _load_selectors_from_dir(directory, selectors_dict):
+    """Load all .json selector files from a directory into selectors_dict."""
+    if not os.path.isdir(directory):
+        return 0
+    count = 0
+    for f in sorted(glob.glob(os.path.join(directory, '*.json'))):
+        if os.path.basename(f) == "selector_usage.json":
+            continue
+        try:
+            with open(f) as fp:
+                data = json.load(fp)
+                selectors_dict.update(data)
+                count += len(data)
+        except Exception as e:
+            print(f"{DIM}  [PLUGIN] Skipping invalid selector file {os.path.basename(f)}: {e}{RESET}")
+    return count
+
+def _get_all_recipe_dirs():
+    """Return list of recipe directories: built-in first, then user plugins."""
+    dirs = []
+    builtin = os.path.join(os.path.dirname(__file__), 'recipes')
+    if os.path.isdir(builtin):
+        dirs.append(builtin)
+    if os.path.isdir(USER_RECIPES_DIR):
+        dirs.append(USER_RECIPES_DIR)
+    return dirs
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Core Orchestrator
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -659,6 +714,7 @@ class RecipeOrchestrator:
       - Selector caching + self-healing (Stagehand pattern)
       - Checkpoint/resume on crash (LangGraph pattern)
       - Human-in-the-loop for captchas (Playwright MCP pattern)
+      - Plugin system for user-supplied selectors & recipes
     """
 
     def __init__(self):
@@ -667,15 +723,20 @@ class RecipeOrchestrator:
         self.selectors = {}
         self.selector_cache = None
 
-        # Load selectors from selectors/ directory
-        selectors_dir = os.path.join(os.path.dirname(__file__), 'selectors')
-        if os.path.isdir(selectors_dir):
-            for f in sorted(glob.glob(os.path.join(selectors_dir, '*.json'))):
-                if os.path.basename(f) == "selector_usage.json": continue
-                with open(f) as fp:
-                    data = json.load(fp)
-                    self.selectors.update(data)
-            self.selector_cache = SelectorCache(self.selectors, selectors_dir)
+        # Ensure user plugin directories exist
+        _ensure_plugin_dirs()
+
+        # Load built-in selectors from orchestrator/selectors/
+        builtin_dir = os.path.join(os.path.dirname(__file__), 'selectors')
+        builtin_count = _load_selectors_from_dir(builtin_dir, self.selectors)
+
+        # Load user plugin selectors from ~/.webghosting/plugins/selectors/
+        user_count = _load_selectors_from_dir(USER_SELECTORS_DIR, self.selectors)
+        if user_count > 0:
+            print(f"{GREEN}  [PLUGIN] Loaded {user_count} user selector(s) from {USER_SELECTORS_DIR}{RESET}")
+
+        if builtin_dir and os.path.isdir(builtin_dir):
+            self.selector_cache = SelectorCache(self.selectors, builtin_dir)
 
     def resolve_template(self, text):
         """Replace {variable.key} placeholders with values from context."""
@@ -1032,20 +1093,25 @@ class RecipeOrchestrator:
 
 
 def list_recipes():
-    """List all available recipes."""
-    recipes_dir = os.path.join(os.path.dirname(__file__), 'recipes')
-    files = glob.glob(os.path.join(recipes_dir, '*.json'))
-    if not files:
-        print(f"{DIM}No recipes found in {recipes_dir}{RESET}")
-        return
-    print(f"\n{CYAN}{BOLD}Available Recipes:{RESET}\n")
-    for f in sorted(files):
-        with open(f) as fp:
-            data = json.load(fp)
-        name = data.get("name", "Unnamed")
-        steps = len(data.get("steps", []))
-        print(f"  {GREEN}{os.path.basename(f)}{RESET}")
-        print(f"  {DIM}{name} ({steps} steps){RESET}\n")
+    """List all available recipes (built-in + user plugins)."""
+    for recipes_dir in _get_all_recipe_dirs():
+        source = "User Plugins" if recipes_dir == USER_RECIPES_DIR else "Built-in"
+        files = glob.glob(os.path.join(recipes_dir, '*.json'))
+        if not files:
+            continue
+        print(f"\n{CYAN}{BOLD}Available Recipes ({source}):{RESET}\n")
+        for f in sorted(files):
+            try:
+                with open(f) as fp:
+                    data = json.load(fp)
+                name = data.get("name", "Unnamed")
+                steps = len(data.get("steps", []))
+                print(f"  {GREEN}{os.path.basename(f)}{RESET}")
+                print(f"  {DIM}{name} ({steps} steps){RESET}\n")
+            except:
+                print(f"  {RED}{os.path.basename(f)} (invalid JSON){RESET}\n")
+    print(f"\n{DIM}  Plugin directory: {USER_PLUGIN_DIR}{RESET}")
+    print(f"{DIM}  Drop .json files into selectors/ or recipes/ to extend.{RESET}")
 
 
 if __name__ == "__main__":

@@ -17,8 +17,7 @@ import (
 // ─── Reframed Prompt ───
 
 // ReframedPrompt is the structured output from the reframe pipeline.
-// Inspired by RefAIne (structured refinement) + LangGraph (intent chaining) +
-// Stagehand (atomic browser primitives) + CO-STAR framework.
+
 type ReframedPrompt struct {
 	// ClearTask is the reframed, English, unambiguous description of what the user wants.
 	ClearTask string `json:"clear_task"`
@@ -208,12 +207,6 @@ func needsReframe(prompt string) bool {
 
 // ReframePrompt takes a raw user prompt (any language, any quality) and returns
 // a structured, precise, English ReframedPrompt ready for the tool dispatcher.
-//
-// Architecture inspired by:
-//   - RefAIne: Single-endpoint prompt refinement microservice
-//   - LangGraph: Intent classification → prompt chaining nodes
-//   - Stagehand: Act/Extract/Observe atomic primitive decomposition
-//   - CO-STAR: Context/Objective/Style/Tone/Audience/Response framework
 //
 // Fast path: If the prompt is already clean English with obvious intent, bypasses LLM.
 // Slow path: Uses a fast/cheap LLM call (~200ms) for translation + intent extraction.
