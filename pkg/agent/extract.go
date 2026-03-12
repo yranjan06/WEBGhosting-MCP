@@ -160,7 +160,7 @@ func (a *Agent) callExtractionLLM(actualModel string, messages []map[string]inte
 }
 
 // ExtractData uses a Map-Reduce architecture to extract structured data.
-func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverride string) (string, error) {
+func (a *Agent) ExtractData(page playwright.Page, schema interface{}, instruction string, modelOverride string, scopeSelector string) (string, error) {
 	// W3C WebMCP Integration (Chrome 146+ incubation)
 	hasWebMCP, err := page.Evaluate(`() => typeof navigator !== 'undefined' && typeof navigator.modelContext !== 'undefined'`)
 	if err == nil && hasWebMCP == true {
@@ -180,10 +180,32 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverr
 	}
 	extractionCacheMu.RUnlock()
 
+	// 0. Data Readiness: Wait for target selector if it's a comment scope
+	if scopeSelector != "" {
+		if strings.Contains(scopeSelector, "comtr") || strings.Contains(scopeSelector, "comment") {
+			log.Printf("[AI] → Waiting for comments (tr.comtr) to render...")
+			// Use the playwright page object directly
+			_, _ = page.WaitForSelector("tr.comtr", playwright.PageWaitForSelectorOptions{
+				State: playwright.WaitForSelectorStateVisible,
+			})
+		}
+	}
+
 	// 1. Prune the HTML — aggressive DOM cleaning to minimize token usage.
 	// Goal: reduce a 300K+ page to < 10K chars of meaningful text content.
-	js := `() => {
-		const clone = document.body.cloneNode(true);
+	js := `(sel) => {
+		let root = document.body;
+		if (sel) {
+			let target;
+			if (sel.startsWith("xpath=")) {
+				const xpath = sel.substring(6);
+				target = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+			} else {
+				target = document.querySelector(sel);
+			}
+			if (target) root = target;
+		}
+		const clone = root.cloneNode(true);
 
 		// Phase 1: Remove entire elements that never contain extractable text
 		const removeSelectors = [
@@ -192,7 +214,7 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverr
 			'header', 'footer', 'nav', 'aside',
 			'form', 'button', 'input', 'select', 'textarea', 'label',
 			'meta', 'link', 'source', 'picture',
-			'img',
+			'img', 'tr.spacer',
 			'[aria-hidden="true"]', '[role="presentation"]', '[role="banner"]',
 			'[role="navigation"]', '[role="complementary"]', '[role="contentinfo"]',
 			'[data-testid]', '[data-test-id]', '[data-artdeco-is-hidden="true"]',
@@ -209,11 +231,10 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverr
 			try { clone.querySelectorAll(sel).forEach(el => el.remove()); } catch(e) {}
 		});
 
-		// Phase 2: Strip all inline styles and data-* attributes (massive bloat)
+		// Phase 2: Clean attributes but PRESERVE id and class for LLM context
 		clone.querySelectorAll('*').forEach(el => {
 			el.removeAttribute('style');
-			el.removeAttribute('class');
-			el.removeAttribute('id');
+			// Keep class and id for structured extraction (senior's advice)
 			[...el.attributes].forEach(attr => {
 				if (attr.name.startsWith('data-') || attr.name.startsWith('aria-')
 					|| attr.name === 'jsaction' || attr.name === 'jscontroller'
@@ -225,7 +246,7 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverr
 
 		// Phase 3: Remove empty containers (divs/spans with no text content)
 		clone.querySelectorAll('div, span, section, article').forEach(el => {
-			if (el.textContent.trim().length === 0) el.remove();
+			if (el.textContent.trim().length === 0 && el.children.length === 0) el.remove();
 		});
 
 		// Phase 4: Collapse whitespace in the final output
@@ -235,8 +256,8 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, modelOverr
 			.trim();
 	}`
 
-	log.Printf("[AI] → Pruning HTML DOM for extraction...")
-	rawHTMLObj, err := page.Evaluate(js)
+	log.Printf("[AI] → Pruning HTML DOM for extraction (scope: %s)...", scopeSelector)
+	rawHTMLObj, err := page.Evaluate(js, scopeSelector)
 	if err != nil {
 		return "", fmt.Errorf("failed to evaluate JS for HTML pruning: %w", err)
 	}
@@ -385,7 +406,7 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 	// Collect and Flatten parallel results
 	log.Printf("[AI] → Step 4: Stitching and Merging %d successfully parsed JSON data chunks...", len(resultsChan))
 
-	var masterArray []interface{}
+	masterArray := []interface{}{}
 
 	for i := 0; i < len(chunks); i++ {
 		res := <-resultsChan
@@ -401,13 +422,32 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 
 		var chunkArray []interface{}
 		if err := json.Unmarshal([]byte(repairedJSON), &chunkArray); err == nil {
-			// It's a valid JSON array, append its elements
-			masterArray = append(masterArray, chunkArray...)
+			// It's a valid JSON array, append its elements if not empty
+			for _, item := range chunkArray {
+				if item != nil {
+					// Deep check: Is it an empty map or map with only nulls?
+					if m, ok := item.(map[string]interface{}); ok {
+						isEmpty := true
+						for _, val := range m {
+							if val != nil && val != "" {
+								isEmpty = false
+								break
+							}
+						}
+						if isEmpty {
+							continue
+						}
+					}
+					masterArray = append(masterArray, item)
+				}
+			}
 		} else {
 			// Might be a single JSON object instead of an array
 			var chunkObject map[string]interface{}
 			if err := json.Unmarshal([]byte(repairedJSON), &chunkObject); err == nil {
-				masterArray = append(masterArray, chunkObject)
+				if len(chunkObject) > 0 {
+					masterArray = append(masterArray, chunkObject)
+				}
 			} else {
 				log.Printf("[AI] WARNING: Chunk %d output was not a valid JSON array/object, skipping.", res.index)
 			}
@@ -416,6 +456,32 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 
 	finalMegaBytes, _ := json.MarshalIndent(masterArray, "", "  ")
 	finalMegaJSON := string(finalMegaBytes)
+
+	// STEP 5: Final Global Reduce Phase (if instruction is provided)
+	if instruction != "" && len(masterArray) > 0 {
+		log.Printf("[AI] → Step 5: Applying User Instruction via Final LLM Reduce Phase: '%s'", instruction)
+		
+		reduceSystemPrompt := "You are a data filtering expert. You will be given a JSON array of extracted data and an INSTRUCTION (e.g., 'top 3 only', 'sort by date', 'filter out X'). You must read the array, apply the exact instruction, and return the modified JSON array. Return ONLY a valid JSON array. Do not explain."
+		
+		reduceMessages := []map[string]interface{}{
+			{"role": "system", "content": reduceSystemPrompt},
+			{"role": "user", "content": fmt.Sprintf("Extracted Array:\n%s\n\nINSTRUCTION to apply:\n%s", finalMegaJSON, instruction)},
+		}
+
+		reducedJSON, err := a.callExtractionLLM(actualModel, reduceMessages, 0.0, map[string]interface{}{"type": "json_object"})
+		if err == nil {
+			// Ensure the reduce phase didn't completely ruin the JSON
+			repairedFinal, fixErr := jsonrepair.JSONRepair(reducedJSON)
+			if fixErr == nil {
+				finalMegaJSON = repairedFinal
+				log.Printf("[AI] Reduce Phase successful. Final JSON string updated.")
+			} else {
+				log.Printf("[AI] WARNING: Reduce phase output invalid JSON, using original Map-phase results.")
+			}
+		} else {
+			log.Printf("[AI] WARNING: Reduce phase LLM call failed: %v", err)
+		}
+	}
 
 	// Store in extraction cache
 	extractionCacheMu.Lock()

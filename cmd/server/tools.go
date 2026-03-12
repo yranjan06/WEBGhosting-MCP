@@ -15,6 +15,27 @@ import (
 	"github.com/ranjanyadav/web-mcp/pkg/browser"
 )
 
+// maybeDirectSelector checks if a string is likely a CSS selector to bypass AI agent reframing.
+func maybeDirectSelector(s string) bool {
+	s = strings.TrimSpace(s)
+	// Common CSS markers or IDs or specific HTML tags our LLM uses
+	if strings.HasPrefix(s, "#") || strings.HasPrefix(s, ".") || strings.HasPrefix(s, "[") {
+		return true
+	}
+	// Check for common tags used as selectors at the start
+	tags := []string{"button", "input", "textarea", "a", "div", "span", "h1", "h2", "h3", "section", "article", "tr", "td", "table", "ul", "li", "p", "form", "select", "option", "label"}
+	for _, t := range tags {
+		if strings.HasPrefix(s, t) {
+			return true
+		}
+	}
+	// Check for pseudo-selectors or compound selectors
+	if strings.Contains(s, ":") || strings.Contains(s, ">") || strings.Contains(s, "+") {
+		return true
+	}
+	return false
+}
+
 // ─── Arg Structs for MCP Tool Schemas ───
 
 type BrowseArgs struct {
@@ -32,13 +53,17 @@ type TypeArgs struct {
 
 type ExtractArgs struct {
 	Schema        interface{} `json:"schema" jsonschema:"required,description=JSON schema or description of data to extract"`
+	Instruction   string      `json:"instruction,omitempty" jsonschema:"description=Optional instruction to filter/slice/sort the extracted data (e.g., 'Only top 3 items')."`
 	ModelOverride string      `json:"model_override,omitempty" jsonschema:"description=Optional model to use for extraction instead of the default agent model (e.g. gpt-4o)"`
+	Selector      string      `json:"selector,omitempty" jsonschema:"description=Optional CSS selector to scope the extraction to a specific part of the page (e.g., 'div#main-content')."`
 }
 
 type ParallelExtractArgs struct {
 	Urls          []string    `json:"urls" jsonschema:"required,description=Array of URLs to navigate and extract from in parallel"`
 	Schema        interface{} `json:"schema" jsonschema:"required,description=JSON schema or description of data to extract"`
+	Instruction   string      `json:"instruction,omitempty" jsonschema:"description=Optional instruction to filter/slice/sort the extracted data (e.g., 'Only top 3 items')."`
 	ModelOverride string      `json:"model_override,omitempty" jsonschema:"description=Optional model to use for extraction instead of the default agent model (e.g. gpt-4o)"`
+	Selector      string      `json:"selector,omitempty" jsonschema:"description=Optional CSS selector to scope the extraction for all URLs."`
 }
 
 type WaitForSelectorArgs struct {
@@ -188,12 +213,21 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Navigated to %s directly instead of clicking.", args.Prompt))), nil
 		}
 
-		if aiAgent == nil {
-			return nil, fmt.Errorf("AI agent not initialized")
-		}
-
 		// ── Reframe: casual/multilingual → precise English ──
 		prompt := args.Prompt
+
+		// ── FAST TRACK: If prompt is already a selector, bypass AI finding! ──
+		if maybeDirectSelector(prompt) {
+			log.Printf("%s[CLICK]%s Direct selector detected: '%s'. Bypassing AI finding.", ColorYellow, ColorReset, prompt)
+			if err := engine.HumanClickElement(prompt); err != nil {
+				// Fallback to AI if direct click fails
+				log.Printf("%s[CLICK]%s Direct click failed: %v. Falling back to AI finding...", ColorRed, ColorReset, err)
+			} else {
+				log.Printf("%s[CLICK]%s Success: Clicked direct selector '%s'", ColorGreen, ColorReset, prompt)
+				return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Clicked element '%s' directly.", prompt))), nil
+			}
+		}
+
 		var pageCtx string
 		if ctx, err := engine.GetPageContext(); err == nil {
 			pageCtx = fmt.Sprintf("Page: %s | Type: %s | URL: %s", ctx.Title, ctx.PageType, ctx.URL)
@@ -234,6 +268,19 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		// ── Reframe: casual/multilingual → precise English ──
 		prompt := args.Prompt
 		var pageCtx string
+
+		// ── FAST TRACK: If prompt is already a selector, bypass AI finding! ──
+		if maybeDirectSelector(prompt) {
+			log.Printf("%s[TYPE]%s Direct selector detected: '%s'. Bypassing AI finding.", ColorYellow, ColorReset, prompt)
+			if err := engine.HumanType(prompt, args.Text); err != nil {
+				// Fallback to AI if direct type fails
+				log.Printf("%s[TYPE]%s Direct type failed: %v. Falling back to AI finding...", ColorRed, ColorReset, err)
+			} else {
+				log.Printf("%s[TYPE]%s Success: Typed into direct selector '%s'", ColorGreen, ColorReset, prompt)
+				return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Typed into element '%s' directly.", prompt))), nil
+			}
+		}
+
 		if ctx, err := engine.GetPageContext(); err == nil {
 			pageCtx = fmt.Sprintf("Page: %s | Type: %s | URL: %s", ctx.Title, ctx.PageType, ctx.URL)
 		}
@@ -277,7 +324,7 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 			return nil, fmt.Errorf("browser not ready: %w", err)
 		}
 
-		extractedJson, err := aiAgent.ExtractData(page, args.Schema, args.ModelOverride)
+		extractedJson, err := aiAgent.ExtractData(page, args.Schema, args.Instruction, args.ModelOverride, args.Selector)
 		if err != nil {
 			return nil, fmt.Errorf("extraction failed: %w", err)
 		}
@@ -285,25 +332,23 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		log.Printf("%s[EXTRACT]%s Success", ColorGreen, ColorReset)
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(extractedJson)), nil
 	}))
-
 	// ─── parallel_extract ───
-	must(server.RegisterTool("parallel_extract", "Extract data from multiple URLs simultaneously in isolated sub-agents (parallel execution). Pass an array of URLs and a single schema.", func(args ParallelExtractArgs) (*mcp_golang.ToolResponse, error) {
-		log.Printf("%s[PARALLEL]%s Starting bulk extraction for %d URLs", ColorBlue, ColorReset, len(args.Urls))
-
+	must(server.RegisterTool("parallel_extract", "Navigate to multiple URLs concurrently (using a hidden browser pool) and extract structured data using AI Map-Reduce. Results are aggregated securely.", func(args ParallelExtractArgs) (*mcp_golang.ToolResponse, error) {
 		if aiAgent == nil {
-			return nil, fmt.Errorf("AI agent is not initialized (missing API key?)")
+			return nil, fmt.Errorf("AI agent not initialized")
 		}
-
+		
 		pw, browser, err := engine.GetBrowserInstances()
 		if err != nil {
 			return nil, fmt.Errorf("browser not ready: %w", err)
 		}
-
-		results, err := aiAgent.ParallelExtract(pw, browser, args.Urls, args.Schema, args.ModelOverride)
+		
+		log.Printf("%s[PARALLEL]%s Extracting from %d URLs...", ColorBlue, ColorReset, len(args.Urls))
+		results, err := aiAgent.ParallelExtract(pw, browser, args.Urls, args.Schema, args.Instruction, args.ModelOverride, args.Selector)
 		if err != nil {
 			return nil, fmt.Errorf("parallel extraction failed: %w", err)
 		}
-
+		
 		extractedJson, err := json.MarshalIndent(results, "", "  ")
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode parallel results: %w", err)
@@ -669,7 +714,6 @@ func RegisterAllTools(server *mcp_golang.Server, engine *browser.Engine, aiAgent
 		if err != nil {
 			return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(fmt.Sprintf("Task failed: %v\nOutput:\n%s", err, out))), nil
 		}
-		log.Printf("%s[TASK]%s Task completed successfully", ColorGreen, ColorReset)
 		return mcp_golang.NewToolResponse(mcp_golang.NewTextContent(out)), nil
 	}))
 

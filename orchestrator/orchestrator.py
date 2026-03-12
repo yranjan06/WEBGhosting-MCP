@@ -276,46 +276,48 @@ def hil_pause(reason=""):
 
 RECIPE_SYSTEM_PROMPT = """You are a WEBGhosting Recipe Generator. Convert user commands into JSON recipes.
 
+10. **HACKER NEWS MASTERY & SMART INDEXING:** Hacker News has a specialized indexing system. **NEVER** use raw CSS for HN stories or comments. ALWAYS use these logical IDs:
+    - `story:N` -> Targets the Nth news article title row.
+    - `metadata:N` -> Targets the subtext row (Author, Points) for the Nth article.
+    - `comments:N` -> Targets the "comments" link for the Nth article.
+    - `comment:N` -> Targets the Nth comment in a discussion thread.
+    - **Navigation Example:** To click comments of the 2nd article:
+      `{"action": "click", "selector": "comments:2"}`.
+    - **Extraction Example (Homepage):** To get the author of the 2nd article:
+      `{"action": "extract", "selector": "metadata:2", "schema": {"user": "a.hnuser"}}`.
+    - **Extraction Example (Thread):** To get the 2nd comment text:
+      `{"action": "extract", "selector": "comment:2", "schema": {"text": ".commtext"}}`.
+    - **SCOPED EXTRACTION:** For threads, the AI will automatically scope to the correct comment row if you use `comment:N`.
+
 EXACT action formats (use these EXACTLY):
 
 {"id": 1, "action": "browse", "url": "https://example.com", "narrate": "Opening site..."}
 {"id": 2, "action": "wait", "state": "domcontentloaded"}
-{"id": 3, "action": "js", "code": "document.querySelector('h1').innerText", "save_as": "title", "narrate": "Reading title..."}
-{"id": 4, "action": "js_from_selector", "selector_id": "google.first_reddit_link", "save_as": "reddit_url", "narrate": "Executing mapped script"}
-{"id": 5, "action": "scroll", "amount": 600}
-{"id": 6, "action": "open_tab"}
-{"id": 7, "action": "switch_tab", "index": 0}
-{"id": 8, "action": "search", "selector": "textarea#APjFqb", "query": "search term", "narrate": "Searching..."}
-{"id": 9, "action": "wait_selector", "selector": "textarea#area"}
-{"id": 10, "action": "type_to_notepad", "selector": "textarea#area", "template": "text with {var.key}", "speed_ms": 15, "narrate": "Typing..."}
-{"id": 11, "action": "sleep", "seconds": 2}
-{"id": 12, "action": "hil_pause", "narrate": "Please solve the captcha"}
+{"id": 3, "action": "wait_selector", "selector": ".post-title"}
+{"id": 4, "action": "click", "selector": ".submit-btn", "narrate": "Clicking submit..."}
+{"id": 5, "action": "type", "selector": "#search", "text": "AI agents", "narrate": "Typing query..."}
+{"id": 6, "action": "extract", "schema": {"title": "string", "links": ["string"]}, "instruction": "Top 3 only", "selector": ".content-area", "save_as": "page_data", "narrate": "Extracting data..."}
+{"id": 7, "action": "scroll", "amount": 600}
+{"id": 8, "action": "open_tab"}
+{"id": 9, "action": "switch_tab", "index": 0}
+{"id": 10, "action": "extract", "schema": {"author": "string"}, "selector": "tr.athing:first-of-type + tr", "save_as": "top_author", "narrate": "Extracting author of first item only..."}
 
-Pre-cached selector catalog (USE THIS FOR ACTION js_from_selector):
+Pre-cached selector catalog (Use these selectors when applicable):
 {selectors}
 
 {system_examples}
 
-Variable system: save_as stores results as JSON. Reference via {variable.key} in later steps.
+Variable system: `save_as` stores results as JSON. Reference via {variable.key} in later steps (e.g., in `url`, `type` text, or `search` query).
 
-Rules:
-1. Output ONLY valid JSON. No markdown, no explanation, no backtick fences.
-2. Top-level keys: "name" (string) and "steps" (array)
-3. Every step MUST have "id" and "action". Use "narrate" for user-facing steps.
-4. "browse" MUST have "url". "js" MUST have "code". "js_from_selector" MUST have "selector_id".
-5. Use "js_from_selector" ONLY for catalog items that are explicitly designed as scripts (e.g., 'google.first_reddit_link', 'hn.extract_top_n', 'hn.comments_link'). For normal DOM elements, write raw JS using the "js" action and the provided selector strings.
-6. Keep recipes minimal.
-7. For data extraction tasks, use "js" or "js_from_selector" with "save_as" to capture results. Do NOT use "type_to_notepad" unless requested.
-8. The final step should be an extraction step that saves data.
-9. ALWAYS use optional chaining (?.) when accessing DOM elements in raw JS.
-
-**CRITICAL TOOL USE RULES:**
-- DOM Lists: ALWAYS use `Array.from(document.querySelectorAll(...))` before calling `.slice()`, `.map()`, or `.filter()`. Raw NodeLists do not support these array methods.
-- Forms: NEVER use `.click()` in JS to submit a search or login form. ALWAYS use the `fill_form` tool, followed by the `press_key` tool with 'Enter'.
-- Twitter/X profiles: When navigating to a specific tweet or profile, remember you must be logged in. Wait for load states.
-- JSON Escaping: Ensure any raw JS code within JSON string values is properly escaped. Do not use invalid JSON escapes like space followed by \'.
-- Multi-Level Extractions: If you need to read a full post or article from a feed, do NOT try to extract the body from the feed. First, use a JS action to extract its URL (`href`), then use a `browse` action to navigate to that URL, `wait`, and then extract the full body.
-- Safe JS: Always use `|| 'Not found'` or `?.innerText` to prevent script crashes on missing elements."""
+**CRITICAL RULES FOR RELIABILITY (DO NOT VIOLATE):**
+1. **NO RAW JS FOR EXTRACTION:** NEVER use `action: "js"` to write complex CSS/DOM queries or mappings. ALWAYS use `action: "extract"` with a descriptive JSON `schema` to let the backend safely extract data using AI. This prevents script crashes! Use the `instruction` property if the user asked to filter, sort, or limit (e.g., "top 3").
+2. **MANDATORY WAITS:** Browsers are asynchronous. ALWAYS add a `{"action": "wait", "state": "domcontentloaded"}` step immediately after EVERY `browse` or `click` action that loads a new page. If clicking expands a menu, use `wait_selector`.
+3. **ONLY output valid JSON:** No markdown, no explanation, no backtick fences.
+4. Top-level keys MUST be exactly: "name" (string) and "steps" (array).
+5. Use "narrate" to describe user-facing steps.
+6. For data extraction tasks, the final step should usually be an `extract` action with a `save_as` key to capture results for the user. Do away with manual javascript scraping.
+7. If you must use `action: "js"`, ONLY use it for interacting with specific non-standard UI elements that forms/clicks can't handle. Never for data reading. Always use `?.innerText` to prevent crashes.
+8. **SCOPED EXTRACTION:** When using `action: "extract"`, ALWAYS provide a `selector` if possible to limit the AI's focus. If the user wants a LIST of items (e.g., 'top 5 comments'), the `selector` MUST be the **common container** (e.g., `table.comment-tree`) instead of an individual item row. This prevents the extraction of unrelated page elements (headers, footers)."""
 
 
 import os
@@ -364,7 +366,8 @@ def get_relevant_selectors(command, selectors_db):
         "linkedin.": r"\b(linkedin|lnkd|lnkd\.in)\b",
         "github.": r"\b(github|repo|pull request|pr)\b",
         "amazon.": r"\b(amazon|buy on|add to cart)\b",
-        "youtube.": r"\b(youtube|yt|video)\b"
+        "youtube.": r"\b(youtube|yt|video)\b",
+        "google.": r"\b(google|goolge|search)\b",
     }
 
     # Find matching prefixes
@@ -781,6 +784,39 @@ class RecipeOrchestrator:
                 text = text.replace(f"{{{var_name}}}", str(var_data))
         return text
 
+    def resolve_logical_selector(self, selector):
+        """Translate logical IDs like 'story:N' into bulletproof XPath/CSS."""
+        if not isinstance(selector, str):
+            return selector
+            
+        # Hacker News Adapter (XPath based for precision indexing)
+        # story:N -> The Nth article title row
+        story_match = re.match(r"^story:(\d+)$", selector)
+        if story_match:
+            n = story_match.group(1)
+            return f"xpath=(//tr[contains(@class, 'athing')])[{n}]"
+            
+        # metadata:N -> The subtext row for the Nth article
+        meta_match = re.match(r"^metadata:(\d+)$", selector)
+        if meta_match:
+            n = meta_match.group(1)
+            return f"xpath=(//tr[contains(@class, 'athing')])[{n}]/following-sibling::tr[1]"
+            
+        # comments:N -> The comments link for the Nth article
+        comments_match = re.match(r"^comments:(\d+)$", selector)
+        if comments_match:
+            n = comments_match.group(1)
+            # HN Specific: Target the link that actually goes to the discussion thread
+            return f"xpath=(//tr[contains(@class, 'athing')])[{n}]/following-sibling::tr[1]//a[contains(@href, 'item?id=') and (contains(text(), 'comment') or contains(text(), 'discuss'))]"
+            
+        # comment:N -> The Nth comment in a thread
+        comment_match = re.match(r"^comment:(\d+)$", selector)
+        if comment_match:
+            n = comment_match.group(1)
+            return f"xpath=(//table[contains(@class, 'comment-tree')]//tr[contains(@class, 'comtr')])[{n}]"
+            
+        return selector
+
     def execute_step(self, step):
         """Execute a single recipe step. Returns True on success."""
         action = step["action"]
@@ -894,6 +930,66 @@ class RecipeOrchestrator:
                 })
                 time.sleep(0.5)
                 self.client.call("press_key", {"key": "Enter"})
+
+            elif action == "click":
+                selector_str = self.resolve_template(step.get("selector") or step.get("prompt"))
+                selector_str = self.resolve_logical_selector(selector_str)
+                # Hacker News Navigation Optimization: "Ghost Click" Fix
+                # If we are clicking on a comments link, prefer extracting href and direct goto
+                is_hn_link = "item?id=" in selector_str and ("news.ycombinator.com" in selector_str or "item?id=" in selector_str)
+                
+                if is_hn_link:
+                    try:
+                        # Double check if we are on HN
+                        current_url = self.client.call("execute_js", {"script": "window.location.href"})
+                        if current_url and isinstance(current_url, str) and "news.ycombinator.com" in current_url:
+                            href = self.client.call("get_attribute", {"prompt": selector_str, "attribute": "href"})
+                            if href:
+                                target_url = href if href.startswith("http") else f"https://news.ycombinator.com/{href}"
+                                print(f"  {CYAN}  [AI] Bulletproof Navigation: Direct GOTO {target_url}{RESET}")
+                                self.client.browse(target_url)
+                                result = {"status": "success", "action": "goto", "url": target_url}
+                            else:
+                                result = self.client.call("click", {"prompt": selector_str})
+                        else:
+                            result = self.client.call("click", {"prompt": selector_str})
+                    except Exception as e:
+                        print(f"  {DIM}  [AI] Fallback to raw click: {e}{RESET}")
+                        result = self.client.call("click", {"prompt": selector_str})
+                else:
+                    result = self.client.call("click", {"prompt": selector_str})
+                time.sleep(1)
+
+            elif action == "type":
+                selector_str = self.resolve_template(step.get("selector") or step.get("prompt"))
+                selector_str = self.resolve_logical_selector(selector_str)
+                text = self.resolve_template(step.get("text", ""))
+                    
+                result = self.client.call("type", {"prompt": selector_str, "text": text})
+                time.sleep(1)
+
+            elif action == "extract":
+                schema = step.get("schema", {})
+                instruction = step.get("instruction", "")
+                if not schema:
+                     print(f"  {RED}[Step {step_id}] Error: 'extract' requires a 'schema' object.{RESET}")
+                     return False
+                
+                # Extract uses AI, give it a spinner
+                ext_spinner = Spinner("Extracting data via LLM Map-Reduce...", color=C.MAGENTA)
+                ext_spinner.start()
+                try:
+                    payload = {"schema": schema}
+                    if instruction:
+                        payload["instruction"] = instruction
+                    if "selector" in step:
+                        payload["selector"] = self.resolve_logical_selector(self.resolve_template(step["selector"]))
+                    
+                    result = self.client.call("extract", payload)
+                    ext_spinner.stop("Data extracted successfully")
+                except Exception as e:
+                    ext_spinner.fail(f"Extraction failed: {e}")
+                    raise e
 
             elif action == "type_to_notepad":
                 if "selector" not in step:

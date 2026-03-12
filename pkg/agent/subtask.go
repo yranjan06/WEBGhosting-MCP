@@ -19,7 +19,7 @@ type SubtaskResult struct {
 
 // ParallelExtract navigates to multiple URLs in parallel using isolated browser contexts
 // and extracts data based on the provided schema.
-func (a *Agent) ParallelExtract(pw *playwright.Playwright, browser playwright.Browser, urls []string, schema interface{}, modelOverride string) ([]SubtaskResult, error) {
+func (a *Agent) ParallelExtract(pw *playwright.Playwright, browser playwright.Browser, urls []string, schema interface{}, instruction string, modelOverride string, scopeSelector string) ([]SubtaskResult, error) {
 	if a == nil {
 		return nil, fmt.Errorf("AI agent not initialized")
 	}
@@ -80,7 +80,7 @@ func (a *Agent) ParallelExtract(pw *playwright.Playwright, browser playwright.Br
 
 			// 4. Extract Data
 			log.Printf("[PARALLEL] Worker %d extracting data from %s...", index, targetURL)
-			extractedJSON, err := a.ExtractData(page, schema, modelOverride)
+			extractedJSON, err := a.ExtractData(page, schema, instruction, modelOverride, scopeSelector)
 			if err != nil {
 				res.Error = fmt.Sprintf("extraction failed: %v", err)
 			} else {

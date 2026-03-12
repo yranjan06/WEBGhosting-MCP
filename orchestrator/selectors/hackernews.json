@@ -64,15 +64,16 @@
         ]
     },
     "hn.comments_link": {
-        "script": "Array.from(document.querySelectorAll('tr.athing:first-of-type + tr .subtext a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss'))",
+        "selector": "tr.athing + tr .subtext a[href^='item?id=']:last-child",
         "extract": [
-            "href"
+            "href",
+            "innerText"
         ],
+        "notes": "Target the actual comment count link. CRITICAL: Fixed to use sibling row logic (tr.athing + tr) to avoid missing the subtext container.",
         "tags": [
             "read",
             "interact",
             "data",
-            "write",
             "navigate",
             "core",
             "extract",
@@ -108,10 +109,11 @@
         ]
     },
     "hn.post_author": {
-        "selector": "a.hnuser",
+        "selector": "tr.athing + tr a.hnuser",
         "extract": [
             "innerText"
         ],
+        "notes": "The username of the post author. CRITICAL: Fixed to use sibling row logic (tr.athing + tr) for precise scoping.",
         "tags": [
             "read",
             "data",
@@ -119,6 +121,14 @@
             "core",
             "login",
             "extract"
+        ]
+    },
+    "hn.comments_container": {
+        "selector": "table.comment-tree",
+        "notes": "The main container for all comments. USE THIS as the 'selector' field when extracting multiple comments.",
+        "tags": [
+            "core",
+            "container"
         ]
     },
     "hn.post_age": {
