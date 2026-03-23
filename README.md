@@ -58,19 +58,11 @@ Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.
 
 ## Repo Layout
 
-WEBGhosting is easiest to work with if you treat it as four layers:
+WEBGhosting is easiest to work with if you treat it as three layers:
 
 - `cmd/server/` and `pkg/`: the Go MCP server, browser runtime, stealth layer, and tool implementations
 - `orchestrator/`: the Python recipe generator, selector routing, and workflow executor
 - `examples/`: demos, smoke tests, and integration-style validation scripts
-- `docs/`: repository structure and supplementary project documents
-
-Useful guides:
-
-- [Repo Structure](docs/REPO_STRUCTURE.md)
-- [Examples Guide](examples/README.md)
-- [Smoke Test Guide](MAJOR_SITE_SMOKE_TESTS.md)
-- [Pitch Report](PITCH_REPORT.md)
 
 ---
 
@@ -177,7 +169,12 @@ For recipe writing guide, supported actions, and selector database docs, see [CO
 
 ## Live Site Smoke Tests
 
-For ready-to-run prompts that validate WEBGhosting against major websites, see [MAJOR_SITE_SMOKE_TESTS.md](MAJOR_SITE_SMOKE_TESTS.md).
+Use the built-in smoke runner for quick live-site validation:
+
+```bash
+python3 examples/smoke_major_sites.py --list
+python3 examples/smoke_major_sites.py --sites hackernews,github,wikipedia
+```
 
 Quick examples:
 
