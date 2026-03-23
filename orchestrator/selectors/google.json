@@ -123,6 +123,30 @@
             "data"
         ]
     },
+    "google.hn_result_link": {
+        "selector": "a[jsname='UWckNb'][href*='news.ycombinator.com']",
+        "extract": ["href"],
+        "notes": "Use this with the extract action to get the Hacker News link from Google, then use browse to navigate to it safely (avoids ghost clicks/new tabs).",
+        "tags": ["read", "navigate", "core", "extract"]
+    },
+    "google.reddit_result_link": {
+        "selector": "a[jsname='UWckNb'][href*='reddit.com']",
+        "extract": ["href"],
+        "notes": "Use this with the extract action to get the Reddit link from Google, then use browse to navigate to it safely.",
+        "tags": ["read", "navigate", "core", "extract"]
+    },
+    "google.twitter_result_link": {
+        "selector": "a[jsname='UWckNb'][href*='twitter.com'], a[jsname='UWckNb'][href*='x.com']",
+        "extract": ["href"],
+        "notes": "Use this with the extract action to get the Twitter/X link from Google, then use browse to navigate to it safely.",
+        "tags": ["read", "navigate", "core", "extract"]
+    },
+    "google.wikipedia_result_link": {
+        "selector": "a[jsname='UWckNb'][href*='wikipedia.org']",
+        "extract": ["href"],
+        "notes": "Use this with the extract action to get the Wikipedia link from Google, then use browse to navigate to it safely.",
+        "tags": ["read", "navigate", "core", "extract"]
+    },
     "google.result_link": {
         "selector": "a[jsname='UWckNb']",
         "fallback": "div.g a",

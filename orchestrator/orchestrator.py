@@ -12,7 +12,11 @@ Usage:
     python3 -m orchestrator.orchestrator --list
 """
 
-import sys, os, json, time, glob, tempfile, hashlib, requests, re
+import sys, os, json, time, glob, tempfile, hashlib, re
+from contextlib import contextmanager
+from urllib import error as urlerror
+from urllib import parse as urlparse
+from urllib import request as urlrequest
 from datetime import datetime, timezone
 
 # Allow running from project root
@@ -21,6 +25,125 @@ from examples.client import WEBGhostingClient, GREEN, RED, YELLOW, CYAN, DIM, BO
 from orchestrator.ui import Spinner, panel, table, step_header, pipeline_banner, recipe_banner, results_panel, stats_summary, info_msg, success_msg, error_msg, warn_msg, C, progress_bar
 
 CHECKPOINT_DIR = os.path.join(tempfile.gettempdir(), "webghosting_checkpoints")
+
+
+class HTTPRequestError(Exception):
+    """Raised when an outbound JSON HTTP request fails."""
+
+
+PROXY_ENV_KEYS = (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "PROXY_USERNAME",
+    "PROXY_PASSWORD",
+)
+
+
+def post_json(url, headers, payload, timeout):
+    """Send a JSON POST request using only the Python standard library."""
+    body = json.dumps(payload).encode("utf-8")
+    req = urlrequest.Request(url, data=body, headers=headers, method="POST")
+
+    try:
+        with urlrequest.urlopen(req, timeout=timeout) as resp:
+            resp_body = resp.read().decode("utf-8")
+            status = getattr(resp, "status", resp.getcode())
+    except urlerror.HTTPError as e:
+        error_body = e.read().decode("utf-8", errors="replace")
+        raise HTTPRequestError(f"HTTP {e.code}: {error_body[:400]}")
+    except urlerror.URLError as e:
+        raise HTTPRequestError(f"Network error: {e.reason}")
+
+    try:
+        data = json.loads(resp_body)
+    except json.JSONDecodeError as e:
+        raise HTTPRequestError(f"Invalid JSON response: {e}")
+
+    if status < 200 or status >= 300:
+        raise HTTPRequestError(f"HTTP {status}")
+
+    return data
+
+
+def _format_proxy_host(parsed):
+    host = parsed.hostname or ""
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    if parsed.port:
+        host = f"{host}:{parsed.port}"
+    return host
+
+
+def _build_proxy_url(scheme, host, username="", password=""):
+    netloc = host
+    if username:
+        auth = urlparse.quote(username, safe="")
+        if password:
+            auth = f"{auth}:{urlparse.quote(password, safe='')}"
+        netloc = f"{auth}@{netloc}"
+    return urlparse.urlunsplit((scheme, netloc, "", "", ""))
+
+
+def parse_proxy_config(raw_proxy):
+    """Normalize one proxy entry for both local HTTP calls and the browser subprocess."""
+    raw_proxy = (raw_proxy or "").strip()
+    if not raw_proxy:
+        return None
+
+    parsed = urlparse.urlsplit(raw_proxy)
+    if not parsed.scheme or not parsed.hostname:
+        username = os.environ.get("PROXY_USERNAME", "")
+        password = os.environ.get("PROXY_PASSWORD", "")
+        return {
+            "raw": raw_proxy,
+            "server": raw_proxy,
+            "env_proxy": raw_proxy,
+            "username": username,
+            "password": password,
+        }
+
+    host = _format_proxy_host(parsed)
+    username = urlparse.unquote(parsed.username) if parsed.username else os.environ.get("PROXY_USERNAME", "")
+    password = urlparse.unquote(parsed.password) if parsed.password else os.environ.get("PROXY_PASSWORD", "")
+    server = _build_proxy_url(parsed.scheme, host)
+    env_proxy = _build_proxy_url(parsed.scheme, host, username, password) if username else server
+
+    return {
+        "raw": raw_proxy,
+        "server": server,
+        "env_proxy": env_proxy,
+        "username": username,
+        "password": password,
+    }
+
+
+@contextmanager
+def proxy_environment(proxy_config):
+    """Temporarily apply proxy settings to the current orchestrator process."""
+    previous = {key: os.environ.get(key) for key in PROXY_ENV_KEYS}
+    try:
+        if proxy_config:
+            env_proxy = proxy_config["env_proxy"]
+            for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+                os.environ[key] = env_proxy
+
+            username = proxy_config.get("username", "")
+            password = proxy_config.get("password", "")
+            if username:
+                os.environ["PROXY_USERNAME"] = username
+                os.environ["PROXY_PASSWORD"] = password
+            else:
+                os.environ.pop("PROXY_USERNAME", None)
+                os.environ.pop("PROXY_PASSWORD", None)
+        yield
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Feature 1: Selector Caching + Self-Healing
@@ -301,6 +424,7 @@ EXACT action formats (use these EXACTLY):
 {"id": 8, "action": "open_tab"}
 {"id": 9, "action": "switch_tab", "index": 0}
 {"id": 10, "action": "extract", "schema": {"author": "string"}, "selector": "tr.athing:first-of-type + tr", "save_as": "top_author", "narrate": "Extracting author of first item only..."}
+{"id": 11, "action": "search_reddit", "query": "AI agents", "subreddit": "LocalLLaMA", "sort": "relevance", "time": "all", "narrate": "Searching Reddit directly..."}
 
 Pre-cached selector catalog (Use these selectors when applicable):
 {selectors}
@@ -317,7 +441,10 @@ Variable system: `save_as` stores results as JSON. Reference via {variable.key} 
 5. Use "narrate" to describe user-facing steps.
 6. For data extraction tasks, the final step should usually be an `extract` action with a `save_as` key to capture results for the user. Do away with manual javascript scraping.
 7. If you must use `action: "js"`, ONLY use it for interacting with specific non-standard UI elements that forms/clicks can't handle. Never for data reading. Always use `?.innerText` to prevent crashes.
-8. **SCOPED EXTRACTION:** When using `action: "extract"`, ALWAYS provide a `selector` if possible to limit the AI's focus. If the user wants a LIST of items (e.g., 'top 5 comments'), the `selector` MUST be the **common container** (e.g., `table.comment-tree`) instead of an individual item row. This prevents the extraction of unrelated page elements (headers, footers)."""
+8. **SCOPED EXTRACTION:** When using `action: "extract"`, ALWAYS provide a `selector` if possible to limit the AI's focus. If the user wants a LIST of items (e.g., 'top 5 comments'), the `selector` MUST be the **common container** (e.g., `table.comment-tree`) instead of an individual item row. This prevents the extraction of unrelated page elements (headers, footers).
+9. **GOOGLE TO TARGET SITE NAVIGATION:** When searching Google and opening a specific site result (like Reddit, HackerNews, Wikipedia), NEVER use `action: "click"`. Google hijacks clicks. ALWAYS use `action: "extract"` with the proper `_result_link` selector to acquire the `href`, then use `action: "browse"` to safely navigate to that extracted URL!
+10. **STRICT SELECTOR USAGE:** Always prioritize using exact `selector` keys from the injected catalog below (e.g., `"selector": "google.first_result"`) over generic `prompt` strings (e.g., `"prompt": "click the first result"`). Natural language prompts can cause the visual clicker to accidentally click the wrong bounding box (like a Login button).
+11. **REDDIT-TOPIC DISCOVERY:** If the task is to find discussion about a topic on Reddit, prefer `action: "search_reddit"` over routing through Google. If the user mentions a subreddit, fill the `subreddit` field and search directly inside that subreddit."""
 
 
 import os
@@ -357,14 +484,14 @@ def save_selector_usage(usage):
 
 def get_relevant_selectors(command, selectors_db):
     cmd_lower = command.lower()
-    
+
     # Mapping selector prefixes to regex patterns for smart matching
     domain_map = {
         "reddit.": r"\b(reddit|r/|shreddit)\b",
         "hn.": r"\b(hacker news|hn|ycombinator|y combinator)\b",
         "twitter.": r"\b(twitter|x\.com|tweet)\b",
         "linkedin.": r"\b(linkedin|lnkd|lnkd\.in)\b",
-        "github.": r"\b(github|repo|pull request|pr)\b",
+        "github.": r"\b(github|repo|pull request)\b",
         "amazon.": r"\b(amazon|buy on|add to cart)\b",
         "youtube.": r"\b(youtube|yt|video)\b",
         "google.": r"\b(google|goolge|search)\b",
@@ -375,11 +502,11 @@ def get_relevant_selectors(command, selectors_db):
     for prefix, pattern in domain_map.items():
         if re.search(pattern, cmd_lower):
             prefixes.append(prefix)
-            
+
     # Default Fallback
     if not prefixes:
         prefixes.append("google.") # Default router assumes generic web search
-        
+
     # Map prompt keywords to semantic tags
     prompt_words = set(re.findall(r'\b\w+\b', cmd_lower))
     active_tags = set(["core"])
@@ -397,13 +524,13 @@ def get_relevant_selectors(command, selectors_db):
             # If it has a matching tag, or defaults to core, include it
             if active_tags.intersection(sel_tags):
                 valid_selectors.append((k, v))
-    
-    # [OPTIMIZATION] Layered Sorting (Top 15 via 80/20 Rule)
+
+    # [OPTIMIZATION] Layered Sorting
     usage_stats = load_selector_usage()
     # Sort by weight/usage descending (default weight is 1)
     valid_selectors.sort(key=lambda x: usage_stats.get(x[0], 1), reverse=True)
-    
-    MAX_SELECTORS = 15
+
+    MAX_SELECTORS = 150  # Increased drastically so it stops pruning required selectors
     top_selectors = valid_selectors[:MAX_SELECTORS]
 
     # Strip out raw JS scripts and filter to save massive amounts of tokens
@@ -413,7 +540,7 @@ def get_relevant_selectors(command, selectors_db):
         if 'script' in v:
             sel['is_script'] = True
         compact_selectors[k] = sel
-            
+
     p_names = ', '.join([p.strip('.') for p in prefixes])
 
     return compact_selectors
@@ -423,39 +550,39 @@ def get_relevant_examples(command):
     """Load matching pre-built recipes from built-in AND user plugin directories."""
     cmd_lower = command.lower()
     examples = []
-    
+
     # Extract prompt keywords
     prompt_words = set(re.findall(r'\b\w+\b', cmd_lower))
-    
+
     # Scan ALL recipe directories (built-in + user plugins)
     all_recipe_dirs = _get_all_recipe_dirs()
-    
+
     best_match = None
     best_score = 0
     fallback = None
-    
+
     for recipes_dir in all_recipe_dirs:
         recipe_files = glob.glob(os.path.join(recipes_dir, '*.json'))
         source = "PLUGIN" if recipes_dir == USER_RECIPES_DIR else "BUILT-IN"
-        
+
         for example_path in recipe_files:
             filename = os.path.basename(example_path).lower()
             file_keywords = set(re.findall(r'\b\w+\b', filename.replace('.json', '')))
-            
+
             # Count how many prompt keywords match the filename
             overlap = len(prompt_words.intersection(file_keywords))
-            
+
             if overlap > best_score:
                 best_score = overlap
                 best_match = (example_path, source)
-            
+
             # Keep hn_reddit_linkedin as generic fallback
             if 'hn_reddit_linkedin' in filename and fallback is None:
                 fallback = (example_path, source)
-    
+
     # Use best keyword match, or fallback
     chosen = best_match if best_score > 0 else fallback
-    
+
     if chosen:
         example_path, source = chosen
         try:
@@ -467,10 +594,10 @@ def get_relevant_examples(command):
 
         except:
             matched_name = None
-                
+
     if not examples:
         return "", None
-        
+
     return "Here is an example of a perfectly formatted complex recipe:\n" + "\n".join(examples), matched_name
 
 
@@ -495,49 +622,49 @@ _reframe_cache = {}
 def _needs_reframe(text):
     """Quick check if text needs LLM reframing (non-English or very casual)."""
     text_lower = text.lower().strip()
-    
+
     # Already a URL → skip
     if text_lower.startswith(("http://", "https://")):
         return False
-    
+
     # Has non-ASCII chars (likely Hindi/other script)
     if any(ord(c) > 127 for c in text):
         return True
-    
+
     # Contains Hindi/Hinglish markers
     for marker in _REFRAME_MARKERS:
         if marker in text_lower:
             return True
-    
+
     # Very short + vague
     if len(text.split()) <= 2:
         return True
-    
+
     return False
 
 
 def reframe_prompt(raw_prompt, api_key, base_url, model):
     """Reframe a casual/multilingual prompt into precise English.
-    
+
     Architecture:
       - RefAIne style: single-call refinement
       - CO-STAR framework: Context/Objective/Style/Tone/Audience/Response
       - Stagehand patterns: decompose into browser primitives
-    
+
     Returns the reframed English prompt, or original if no reframing needed.
     """
     raw_prompt = raw_prompt.strip()
-    
+
     # Fast path: already clean English
     if not _needs_reframe(raw_prompt):
         return raw_prompt
-    
+
     # Cache check
     if raw_prompt in _reframe_cache:
         cached = _reframe_cache[raw_prompt]
         print(f"  {DIM}[REFRAME] Cache hit{RESET}")
         return cached
-    
+
     reframe_system = """You are a Prompt Reframer for a browser automation system called WEBGhosting.
 
 Your job: Convert casual, multilingual, vague user prompts into precise, clear English commands.
@@ -547,7 +674,7 @@ Output: ONLY the reframed English command. Nothing else. No JSON, no explanation
 
 Translation rules:
 - "karo"/"kro"/"kar do" = do/perform
-- "daba do"/"dabao" = click/press  
+- "daba do"/"dabao" = click/press
 - "likh do"/"likho" = type/write
 - "khol do"/"kholo"/"jao" = open/go to/navigate
 - "nikal do"/"nikalo"/"bata do" = extract/get/show
@@ -567,18 +694,19 @@ Rules:
 2. Keep it concise and action-oriented
 3. Resolve vagueness where possible
 4. Expand abbreviated site names to full names
-5. NO quotes, NO JSON, NO explanation — just the clean command"""
+5. IMPORTANT: DO NOT aggressively split or rewrite search queries. Keep search entities intact. If the user says "search X Y Z", do NOT rewrite it as "search X and navigate to Y and Z". Preserve the exact semantic search term!
+6. NO quotes, NO JSON, NO explanation — just the clean command"""
 
     reframe_model = os.environ.get("REFRAME_MODEL", model)
-    
+
     try:
-        resp = requests.post(
+        resp_data = post_json(
             f"{base_url}/chat/completions",
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             },
-            json={
+            payload={
                 "model": reframe_model,
                 "messages": [
                     {"role": "system", "content": reframe_system},
@@ -587,20 +715,18 @@ Rules:
                 "temperature": 0.1,
                 "max_tokens": 256
             },
-            timeout=30
+            timeout=30,
         )
-        if resp.ok:
-            resp_data = resp.json()
-            _track_tokens(resp_data, "reframe")
-            reframed = resp_data["choices"][0]["message"]["content"].strip()
-            # Strip any quotes the LLM might have added
-            reframed = reframed.strip('"\'')
-            if reframed and len(reframed) > 3:
-                _reframe_cache[raw_prompt] = reframed
-                return reframed
+        _track_tokens(resp_data, "reframe")
+        reframed = resp_data["choices"][0]["message"]["content"].strip()
+        # Strip any quotes the LLM might have added
+        reframed = reframed.strip('"\'')
+        if reframed and len(reframed) > 3:
+            _reframe_cache[raw_prompt] = reframed
+            return reframed
     except Exception as e:
         print(f"  {DIM}[REFRAME] LLM call failed, using original: {e}{RESET}")
-    
+
     return raw_prompt
 
 
@@ -620,13 +746,18 @@ def generate_recipe(command, selectors_db):
     if reframed_command != command:
         command = reframed_command
 
+    # Use BOTH the raw and reframed prompt for routing/examples.
+    # Reframing can occasionally simplify away destination hints like "on reddit",
+    # which makes selector injection too narrow for cross-site workflows.
+    routing_context = original_prompt if original_prompt == command else f"{original_prompt}\n{command}"
+
     # [OPTIMIZATION] Token-Efficient Smart Router
-    compact_selectors = get_relevant_selectors(command, selectors_db)
+    compact_selectors = get_relevant_selectors(routing_context, selectors_db)
     selectors_summary = json.dumps(compact_selectors, indent=2)
-    
+
     # [OPTIMIZATION] Few-Shot Example Injection (RAG)
-    system_examples, example_name = get_relevant_examples(command)
-    
+    system_examples, example_name = get_relevant_examples(routing_context)
+
     # Show the pipeline banner
     domains = ', '.join(sorted(set(k.split('.')[0] for k in compact_selectors.keys()))) or 'general'
     pipeline_banner(original_prompt, command, domains, example_name, len(compact_selectors))
@@ -637,35 +768,32 @@ def generate_recipe(command, selectors_db):
     spinner.start()
 
     try:
-        resp = requests.post(
+        user_prompt = command if original_prompt == command else f"Original user prompt:\n{original_prompt}\n\nNormalized task:\n{command}"
+
+        resp_data = post_json(
             f"{base_url}/chat/completions",
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             },
-            json={
+            payload={
                 "model": model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": command}
+                    {"role": "user", "content": user_prompt}
                 ],
                 "temperature": 0.2,
                 "max_tokens": 2000
             },
-            timeout=90
+            timeout=90,
         )
-        if not resp.ok:
-            spinner.fail(f"LLM API error ({resp.status_code})")
-            return None
-        resp.raise_for_status()
-        resp_data = resp.json()
         _track_tokens(resp_data, "recipe")
         content = resp_data["choices"][0]["message"]["content"].strip()
-        
+
         # Extract JSON block between first '{' and last '}'
         start_idx = content.find('{')
         end_idx = content.rfind('}')
-        
+
         if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
             content = content[start_idx:end_idx+1]
         else:
@@ -674,14 +802,14 @@ def generate_recipe(command, selectors_db):
 
         # Pre-process content to fix common LLM JSON escaping bugs (like invalid \')
         content = content.replace(r"\'", "'")
-        
+
         recipe = json.loads(content)
         steps = len(recipe.get("steps", []))
         spinner.stop(f"Recipe ready: \"{recipe.get('name', 'Unnamed')}\" ({steps} steps)")
         recipe_banner(recipe.get('name', 'Unnamed'), steps)
         return recipe
 
-    except requests.exceptions.RequestException as e:
+    except HTTPRequestError as e:
         spinner.fail(f"LLM API error: {e}")
         return None
     except json.JSONDecodeError as e:
@@ -771,12 +899,105 @@ class RecipeOrchestrator:
         if builtin_dir and os.path.isdir(builtin_dir):
             self.selector_cache = SelectorCache(self.selectors, builtin_dir)
 
+    def get_page_snapshot(self):
+        """Return a small JSON snapshot of the current page for health checks."""
+        if not self.client:
+            return {}
+
+        try:
+            result = self.client.call("execute_js", {
+                "script": """(() => JSON.stringify({
+                    url: window.location.href,
+                    title: document.title || "",
+                    text: (document.body ? document.body.innerText : "").replace(/\\s+/g, " ").trim().slice(0, 2500)
+                }))()"""
+            })
+            if isinstance(result, str):
+                return json.loads(result)
+        except Exception:
+            pass
+        return {}
+
+    def detect_page_issue(self):
+        """Detect obvious block or interstitial pages that should not be extracted."""
+        snapshot = self.get_page_snapshot()
+        url = str(snapshot.get("url", "")).lower()
+        title = str(snapshot.get("title", "")).lower()
+        text = str(snapshot.get("text", "")).lower()
+
+        reddit_block_markers = [
+            "blocked by mistake",
+            "request has been blocked",
+            "you've been blocked by network security",
+            "whoa there, pardner",
+            "for some reason reddit can't be reached",
+            "for some reason reddit cannot be reached",
+        ]
+
+        if "reddit.com" in url:
+            for marker in reddit_block_markers:
+                if marker in title or marker in text:
+                    return "reddit_block"
+
+        return None
+
+    def build_reddit_search_url(self, query, subreddit="", sort="relevance", time_filter="all"):
+        """Build a canonical Reddit search URL for global or subreddit-scoped topic discovery."""
+        query = (query or "").strip()
+        subreddit = (subreddit or "").strip().lstrip("r/").strip("/")
+        sort = (sort or "relevance").strip()
+        time_filter = (time_filter or "all").strip()
+
+        encoded_query = urlparse.quote_plus(query)
+        encoded_subreddit = urlparse.quote(subreddit)
+
+        if encoded_subreddit:
+            return (
+                f"https://www.reddit.com/r/{encoded_subreddit}/search/"
+                f"?q={encoded_query}&restrict_sr=on&sort={urlparse.quote(sort)}&t={urlparse.quote(time_filter)}"
+            )
+
+        return (
+            f"https://www.reddit.com/search/"
+            f"?q={encoded_query}&sort={urlparse.quote(sort)}&t={urlparse.quote(time_filter)}"
+        )
+
+    def run_navigation_checks(self, intended_url=""):
+        """Run lightweight checks after navigation and stop on obvious bad pages."""
+        time.sleep(1)
+        hil_reason = detect_hil_needed(self.client)
+
+        snapshot = self.get_page_snapshot()
+        current_url = str(snapshot.get("url", "")).lower()
+
+        if current_url and ("login" in current_url or "signin" in current_url):
+            if "login" not in intended_url.lower() and "signin" not in intended_url.lower():
+                hil_reason = "login"
+
+        if hil_reason == "captcha":
+            hil_pause("Captcha detected! Please solve it in the browser.")
+        elif hil_reason == "login":
+            hil_pause("Login page detected! Please sign in.")
+
+        page_issue = self.detect_page_issue()
+        if page_issue == "reddit_block":
+            raise RuntimeError(
+                "Reddit returned a block/interstitial page instead of the discussion thread. "
+                "Try again with a persistent browser profile, proxy rotation, or headed mode."
+            )
+
     def resolve_template(self, text):
         """Replace {variable.key} placeholders with values from context."""
         if not isinstance(text, str):
             return text
         for var_name, var_data in self.context.items():
-            if isinstance(var_data, dict):
+            if isinstance(var_data, list) and len(var_data) > 0 and isinstance(var_data[0], dict):
+                # Data is array of dicts (typical for LLM extraction list results). Safely map {var.key} to first item.
+                for key, val in var_data[0].items():
+                    placeholder = f"{{{var_name}.{key}}}"
+                    text = text.replace(placeholder, str(val) if val else "")
+                text = text.replace(f"{{{var_name}}}", str(var_data))
+            elif isinstance(var_data, dict):
                 for key, val in var_data.items():
                     placeholder = f"{{{var_name}.{key}}}"
                     text = text.replace(placeholder, str(val) if val else "")
@@ -784,37 +1005,61 @@ class RecipeOrchestrator:
                 text = text.replace(f"{{{var_name}}}", str(var_data))
         return text
 
+    def resolve_selector_reference(self, selector):
+        """Resolve selector catalog keys like 'reddit.post_title' into real selectors."""
+        if not isinstance(selector, str):
+            return selector
+
+        selector = selector.strip()
+        if selector in self.selectors:
+            if self.selector_cache:
+                verified = self.selector_cache.get_verified_selector(self.client, selector)
+                if verified:
+                    return verified
+
+            entry = self.selectors.get(selector, {})
+            resolved = entry.get("selector")
+            if resolved:
+                return resolved
+
+        return self.resolve_logical_selector(selector)
+
     def resolve_logical_selector(self, selector):
         """Translate logical IDs like 'story:N' into bulletproof XPath/CSS."""
         if not isinstance(selector, str):
             return selector
-            
+
         # Hacker News Adapter (XPath based for precision indexing)
         # story:N -> The Nth article title row
         story_match = re.match(r"^story:(\d+)$", selector)
         if story_match:
             n = story_match.group(1)
             return f"xpath=(//tr[contains(@class, 'athing')])[{n}]"
-            
+
         # metadata:N -> The subtext row for the Nth article
         meta_match = re.match(r"^metadata:(\d+)$", selector)
         if meta_match:
             n = meta_match.group(1)
             return f"xpath=(//tr[contains(@class, 'athing')])[{n}]/following-sibling::tr[1]"
-            
+
         # comments:N -> The comments link for the Nth article
         comments_match = re.match(r"^comments:(\d+)$", selector)
         if comments_match:
             n = comments_match.group(1)
             # HN Specific: Target the link that actually goes to the discussion thread
             return f"xpath=(//tr[contains(@class, 'athing')])[{n}]/following-sibling::tr[1]//a[contains(@href, 'item?id=') and (contains(text(), 'comment') or contains(text(), 'discuss'))]"
-            
+
         # comment:N -> The Nth comment in a thread
         comment_match = re.match(r"^comment:(\d+)$", selector)
         if comment_match:
             n = comment_match.group(1)
             return f"xpath=(//table[contains(@class, 'comment-tree')]//tr[contains(@class, 'comtr')])[{n}]"
-            
+
+        # SELF-HEALING: If LLM hallucinates literal catalog keys into the 'prompt' field
+        if selector == "google.first_result": return "h3.LC20lb"
+        if selector == "google.reddit_result_link": return "a[jsname='UWckNb'][href*='reddit.com']"
+        if selector == "google.hn_result_link": return "a[jsname='UWckNb'][href*='news.ycombinator.com']"
+
         return selector
 
     def execute_step(self, step):
@@ -840,30 +1085,14 @@ class RecipeOrchestrator:
             elif action == "browse":
                 url = self.resolve_template(step["url"])
                 self.client.call("browse", {"url": url})
-                
-                # [OPTIMIZATION] Dynamic Page Context Validation
-                # Auto-HIL: proactively check for barriers before executing blind actions
-                time.sleep(1)
-                hil_reason = detect_hil_needed(self.client)
-                
-                # Dynamic check: Did we get redirected to a login wall?
-                url_check = self.client.call("execute_js", {"script": "window.location.href"})
-                if url_check:
-                    current_url = str(url_check).lower()
-                    if ("login" in current_url or "signin" in current_url) and "login" not in url.lower():
-                        hil_reason = "login"
-
-                if hil_reason == "captcha":
-                    hil_pause("Captcha detected! Please solve it in the browser.")
-                elif hil_reason == "login":
-                    hil_pause("Login page detected! Please sign in.")
+                self.run_navigation_checks(url)
 
             elif action == "wait":
                 state = step.get("state", "domcontentloaded")
                 self.client.call("wait_for_load_state", {"state": state})
 
             elif action == "wait_selector":
-                selector = self.resolve_template(step["selector"])
+                selector = self.resolve_selector_reference(self.resolve_template(step["selector"]))
                 # Use selector cache if available
                 if self.selector_cache:
                     verified = self.selector_cache.verify_selector(self.client, selector)
@@ -896,10 +1125,10 @@ class RecipeOrchestrator:
                 if not selector_id or selector_id not in self.selectors:
                     print(f"  {RED}[Step {step_id}] Error: selector_id '{selector_id}' not found in registry.{RESET}")
                     return False
-                
+
                 sel_data = self.selectors[selector_id]
                 script = sel_data.get("script")
-                
+
                 if not script:
                     # Auto-map simple selectors to JS based on extract attributes
                     sel_str = sel_data.get("selector")
@@ -914,7 +1143,7 @@ class RecipeOrchestrator:
                     else:
                         print(f"  {RED}[Step {step_id}] Error: '{selector_id}' has no script or selector.{RESET}")
                         return False
-                    
+
                 script = self.resolve_template(script)
                 result = self.client.call("execute_js", {"script": script})
 
@@ -923,7 +1152,7 @@ class RecipeOrchestrator:
                 result = self.client.call("execute_js", {"script": code})
 
             elif action == "search":
-                selector = self.resolve_template(step.get("selector", "textarea#APjFqb"))
+                selector = self.resolve_selector_reference(self.resolve_template(step.get("selector", "textarea#APjFqb")))
                 query = self.resolve_template(step["query"])
                 self.client.call("fill_form", {
                     "fields": [{"selector": selector, "value": query, "type": "textbox"}]
@@ -931,23 +1160,77 @@ class RecipeOrchestrator:
                 time.sleep(0.5)
                 self.client.call("press_key", {"key": "Enter"})
 
+            elif action == "search_reddit":
+                query = self.resolve_template(step["query"])
+                subreddit = self.resolve_template(step.get("subreddit", ""))
+                sort = self.resolve_template(step.get("sort", "relevance"))
+                time_filter = self.resolve_template(step.get("time", "all"))
+                search_url = self.build_reddit_search_url(query, subreddit, sort, time_filter)
+                self.client.call("browse", {"url": search_url})
+                self.run_navigation_checks(search_url)
+                result = json.dumps({
+                    "url": search_url,
+                    "query": query,
+                    "subreddit": subreddit,
+                    "sort": sort,
+                    "time": time_filter,
+                })
+
             elif action == "click":
                 selector_str = self.resolve_template(step.get("selector") or step.get("prompt"))
-                selector_str = self.resolve_logical_selector(selector_str)
-                # Hacker News Navigation Optimization: "Ghost Click" Fix
-                # If we are clicking on a comments link, prefer extracting href and direct goto
+                selector_str = self.resolve_selector_reference(selector_str)
+                # Hacker News and Reddit Navigation Optimization: "Ghost Click" Fix
+                # If we are clicking on a result link, prefer extracting href and direct goto
                 is_hn_link = "item?id=" in selector_str and ("news.ycombinator.com" in selector_str or "item?id=" in selector_str)
-                
-                if is_hn_link:
+                is_reddit_link = "reddit.com" in selector_str or "reddit_result_link" in selector_str
+                is_google_result = "LC20lb" in selector_str or "google.first_result" in selector_str or "h3" in selector_str
+
+                if is_hn_link or is_reddit_link or is_google_result:
                     try:
-                        # Double check if we are on HN
                         current_url = self.client.call("execute_js", {"script": "window.location.href"})
-                        if current_url and isinstance(current_url, str) and "news.ycombinator.com" in current_url:
-                            href = self.client.call("get_attribute", {"prompt": selector_str, "attribute": "href"})
-                            if href:
-                                target_url = href if href.startswith("http") else f"https://news.ycombinator.com/{href}"
+                        if current_url and isinstance(current_url, str):
+                            selector_json = json.dumps(selector_str)
+                            href = self.client.call("execute_js", {"script": f"""(() => {{
+                                const sel = {selector_json};
+                                let el = null;
+                                if (sel.startsWith("xpath=")) {{
+                                    const xpath = sel.substring(6);
+                                    el = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                }} else {{
+                                    el = document.querySelector(sel);
+                                }}
+
+                                if (!el) return "";
+                                // If inside a Google result, climb to the anchor tag
+                                if (el.tagName !== 'A') el = el.closest('a') || el;
+                                let h = el.getAttribute("href") || "";
+
+                                // Clean Google tracking URLs if present
+                                if (h.includes("/url?q=")) {{
+                                    try {{
+                                        const u = new URL(h.startsWith("/") ? `https://www.google.com${{h}}` : h);
+                                        h = decodeURIComponent(u.searchParams.get("q") || "");
+                                        h = h.split("&")[0];
+                                    }} catch(e) {{ const m = h.match(/q=([^&]+)/); h = m ? decodeURIComponent(m[1]) : h; }}
+                                }}
+                                return h;
+                            }})()"""})
+                            if href and len(href) > 2:
+                                if is_hn_link:
+                                    target_url = href if href.startswith("http") else f"https://news.ycombinator.com/{href}"
+                                elif is_reddit_link:
+                                    # Keep Reddit URLs on the canonical host. Forcing old.reddit can land on
+                                    # block/interstitial pages and poison downstream extraction.
+                                    target_url = href if href.startswith("http") else f"https://www.reddit.com{href}"
+                                    target_url = target_url.replace("://old.reddit.com", "://www.reddit.com")
+                                    target_url = target_url.replace("://reddit.com", "://www.reddit.com")
+                                else:
+                                    # Generic Google click fallback (fixes hijacking universally)
+                                    target_url = href if href.startswith("http") else f"https://www.google.com{href}"
+
                                 print(f"  {CYAN}  [AI] Bulletproof Navigation: Direct GOTO {target_url}{RESET}")
-                                self.client.browse(target_url)
+                                self.client.call("browse", {"url": target_url})
+                                self.run_navigation_checks(target_url)
                                 result = {"status": "success", "action": "goto", "url": target_url}
                             else:
                                 result = self.client.call("click", {"prompt": selector_str})
@@ -962,9 +1245,9 @@ class RecipeOrchestrator:
 
             elif action == "type":
                 selector_str = self.resolve_template(step.get("selector") or step.get("prompt"))
-                selector_str = self.resolve_logical_selector(selector_str)
+                selector_str = self.resolve_selector_reference(selector_str)
                 text = self.resolve_template(step.get("text", ""))
-                    
+
                 result = self.client.call("type", {"prompt": selector_str, "text": text})
                 time.sleep(1)
 
@@ -974,7 +1257,13 @@ class RecipeOrchestrator:
                 if not schema:
                      print(f"  {RED}[Step {step_id}] Error: 'extract' requires a 'schema' object.{RESET}")
                      return False
-                
+
+                page_issue = self.detect_page_issue()
+                if page_issue == "reddit_block":
+                    raise RuntimeError(
+                        "Current Reddit page is a block/interstitial page, so extraction would be unreliable."
+                    )
+
                 # Extract uses AI, give it a spinner
                 ext_spinner = Spinner("Extracting data via LLM Map-Reduce...", color=C.MAGENTA)
                 ext_spinner.start()
@@ -983,8 +1272,8 @@ class RecipeOrchestrator:
                     if instruction:
                         payload["instruction"] = instruction
                     if "selector" in step:
-                        payload["selector"] = self.resolve_logical_selector(self.resolve_template(step["selector"]))
-                    
+                        payload["selector"] = self.resolve_selector_reference(self.resolve_template(step["selector"]))
+
                     result = self.client.call("extract", payload)
                     ext_spinner.stop("Data extracted successfully")
                 except Exception as e:
@@ -996,6 +1285,7 @@ class RecipeOrchestrator:
                     print(f"  {DIM}  [Step {step_id}] Skipping type_to_notepad — no selector provided.{RESET}")
                     return True
                 selector = self.resolve_template(step["selector"])
+                selector = self.resolve_selector_reference(selector)
                 text = self.resolve_template(step.get("template", step.get("text", "")))
                 speed = step.get("speed_ms", 15)
 
@@ -1094,8 +1384,14 @@ class RecipeOrchestrator:
         # Inject proxy if provided
         env_vars = {}
         if proxy:
-            env_vars["HTTP_PROXY"] = proxy
-            print(f"{DIM}  [NETWORK] Using IP/Proxy: {proxy}{RESET}")
+            env_vars["HTTP_PROXY"] = proxy["server"]
+            env_vars["HTTPS_PROXY"] = proxy["server"]
+            env_vars["http_proxy"] = proxy["server"]
+            env_vars["https_proxy"] = proxy["server"]
+            if proxy.get("username"):
+                env_vars["PROXY_USERNAME"] = proxy["username"]
+                env_vars["PROXY_PASSWORD"] = proxy.get("password", "")
+            print(f"{DIM}  [NETWORK] Using IP/Proxy: {proxy['server']}{RESET}")
 
         from examples.client import WEBGhostingClient
         self.client = WEBGhostingClient(env_overrides=env_vars)
@@ -1144,7 +1440,7 @@ class RecipeOrchestrator:
         """Generate a recipe from natural language and execute it."""
         run_start = time.time()
         print()
-        
+
         # Load and ROTATE proxy (random pick for IP rotation)
         proxy = None
         try:
@@ -1152,57 +1448,58 @@ class RecipeOrchestrator:
             if os.environ.get("PROXY_LIST"):
                 proxies = [p.strip() for p in os.environ.get("PROXY_LIST").split(',') if p.strip()]
                 if proxies:
-                    proxy = random.choice(proxies)
-                    info_msg(f"Rotating IP: {proxy}")
+                    proxy = parse_proxy_config(random.choice(proxies))
+                    info_msg(f"Rotating IP: {proxy['server']}")
             elif os.path.exists("proxies.txt"):
                 with open("proxies.txt", "r") as pf:
                     proxies = [l.strip() for l in pf if l.strip()]
                 if proxies:
-                    proxy = random.choice(proxies)
-                    info_msg(f"Rotating IP: {proxy}")
+                    proxy = parse_proxy_config(random.choice(proxies))
+                    info_msg(f"Rotating IP: {proxy['server']}")
         except Exception:
             pass
 
-        recipe = generate_recipe(command, self.selectors)
-        if not recipe:
-            error_msg("Failed to generate recipe.")
-            return False
+        with proxy_environment(proxy):
+            recipe = generate_recipe(command, self.selectors)
+            if not recipe:
+                error_msg("Failed to generate recipe.")
+                return False
 
-        tmp_path = os.path.join(tempfile.gettempdir(), f"webghosting_recipe_{int(time.time())}.json")
-        with open(tmp_path, 'w') as f:
-            json.dump(recipe, f, indent=2)
+            tmp_path = os.path.join(tempfile.gettempdir(), f"webghosting_recipe_{int(time.time())}.json")
+            with open(tmp_path, 'w') as f:
+                json.dump(recipe, f, indent=2)
 
-        try:
-            success = self.run(tmp_path, proxy=proxy)
-            
-            # [OPTIMIZATION] Self-Improving Usage Feedback Loop
-            if success and recipe:
-                usage_stats = load_selector_usage()
-                updated = False
-                for step in recipe.get('steps', []):
-                    action = step.get('action')
-                    sel_id = step.get('selector_id')
-                    # Log explicit JS selector usage
-                    if action == 'js_from_selector' and sel_id:
-                        usage_stats[sel_id] = usage_stats.get(sel_id, 1) + 1
-                        updated = True
-                    # Also log if the LLM hallucinated a search input for search/type tools
-                    elif action in ['type', 'search'] and sel_id:
-                         usage_stats[sel_id] = usage_stats.get(sel_id, 1) + 1
-                         updated = True
+            try:
+                success = self.run(tmp_path, proxy=proxy)
 
-                if updated:
-                    save_selector_usage(usage_stats)
+                # [OPTIMIZATION] Self-Improving Usage Feedback Loop
+                if success and recipe:
+                    usage_stats = load_selector_usage()
+                    updated = False
+                    for step in recipe.get('steps', []):
+                        action = step.get('action')
+                        sel_id = step.get('selector_id')
+                        # Log explicit JS selector usage
+                        if action == 'js_from_selector' and sel_id:
+                            usage_stats[sel_id] = usage_stats.get(sel_id, 1) + 1
+                            updated = True
+                        # Also log if the LLM hallucinated a search input for search/type tools
+                        elif action in ['type', 'search'] and sel_id:
+                             usage_stats[sel_id] = usage_stats.get(sel_id, 1) + 1
+                             updated = True
 
-            # Show run statistics
-            elapsed = time.time() - run_start
-            steps_count = len(recipe.get('steps', []))
-            stats_summary(_token_usage, elapsed, steps_count, recipe.get('name', 'Unknown'))
+                    if updated:
+                        save_selector_usage(usage_stats)
 
-            return success
-        finally:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+                # Show run statistics
+                elapsed = time.time() - run_start
+                steps_count = len(recipe.get('steps', []))
+                stats_summary(_token_usage, elapsed, steps_count, recipe.get('name', 'Unknown'))
+
+                return success
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

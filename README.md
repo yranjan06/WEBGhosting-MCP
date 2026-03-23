@@ -13,8 +13,10 @@
   <p align="center">
     <a href="#quick-start">Quick Start</a> &bull;
     <a href="#what-it-can-do">Features</a> &bull;
+    <a href="#repo-layout">Repo Layout</a> &bull;
     <a href="#recipe-orchestrator">Orchestrator</a> &bull;
-    <a href="#all-33-tools">Tools</a> &bull;
+    <a href="#live-site-smoke-tests">Smoke Tests</a> &bull;
+    <a href="#all-34-tools">Tools</a> &bull;
     <a href="CONTRIBUTING.md">Contributing</a>
   </p>
 </p>
@@ -25,7 +27,7 @@ Most AI agents can think. Very few can actually browse.
 
 **WEBGhosting changes that.**
 
-It is the stealthiest and most reliable MCP browser server for AI agents, built for real production use. With **33 powerful tools**, 22 anti-fingerprint scripts, LLM-powered extraction, and a **Recipe Orchestrator** that turns natural language commands into automated browser workflows — it gives AI agents a browser they can truly control.
+It is the stealthiest and most reliable MCP browser server for AI agents, built for real production use. With **34 powerful tools**, 22 anti-fingerprint scripts, LLM-powered extraction, and a **Recipe Orchestrator** that turns natural language commands into automated browser workflows — it gives AI agents a browser they can truly control.
 
 Navigate pages. Click buttons. Fill forms. Extract structured data. Run multi-step recipes across websites. **All through natural language.**
 
@@ -40,7 +42,7 @@ Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.
 | Capability | What it means for your Agent |
 |---|---|
 | **Recipe Orchestrator** | Give a natural language command like *"Go to HN and find the top story"* — WEBGhosting auto-generates a recipe, executes it, returns data, and cleans up |
-| **Pre-cached Selectors** | 55 selectors across 12 major websites (Amazon, Reddit, YouTube, GitHub, etc.) for instant, reliable DOM access |
+| **Pre-cached Selectors** | 134 selectors across 12 major website packs (Amazon, Reddit, YouTube, GitHub, etc.) for instant, reliable DOM access |
 | **LLM-Powered Navigation** | Tell it `click("Login button")` or `type("Search box", "AI")` and it figures out the DOM |
 | **Stealth Hardening** | 22 fingerprint patches (Bezier mouse, typing cadence, WebGL noise) to bypass bot protection |
 | **Map-Reduce Extraction** | Splits massive 300K+ char pages into chunks, runs parallel LLM extraction, stitches JSON |
@@ -51,6 +53,24 @@ Built with ❤️ for the AI community. **[Contributions welcome!](CONTRIBUTING.
 | **Parallel Extraction** | Extract structured data from multiple URLs simultaneously using isolated browser contexts |
 | **Universal LLM Support** | Works seamlessly with OpenAI, Groq, Ollama, Together, NVIDIA NIM, and LM Studio |
 | **Docker Ready** | Single-command containerized deployment for headless scraping at scale |
+
+---
+
+## Repo Layout
+
+WEBGhosting is easiest to work with if you treat it as four layers:
+
+- `cmd/server/` and `pkg/`: the Go MCP server, browser runtime, stealth layer, and tool implementations
+- `orchestrator/`: the Python recipe generator, selector routing, and workflow executor
+- `examples/`: demos, smoke tests, and integration-style validation scripts
+- `docs/`: repository structure and supplementary project documents
+
+Useful guides:
+
+- [Repo Structure](docs/REPO_STRUCTURE.md)
+- [Examples Guide](examples/README.md)
+- [Smoke Test Guide](MAJOR_SITE_SMOKE_TESTS.md)
+- [Pitch Report](PITCH_REPORT.md)
 
 ---
 
@@ -138,6 +158,8 @@ python3 examples/test_page_context.py
 
 Give any browser task in natural language — WEBGhosting auto-generates a recipe, executes it, returns data, and cleans up.
 
+The orchestrator uses Python's standard library HTTP client, so there is no extra `pip install` step required just to run `python3 -m orchestrator.orchestrator`.
+
 ```bash
 export AI_API_KEY="your-key" AI_BASE_URL="https://api.openai.com/v1" AI_MODEL="gpt-4o"
 
@@ -153,6 +175,27 @@ For recipe writing guide, supported actions, and selector database docs, see [CO
 
 ---
 
+## Live Site Smoke Tests
+
+For ready-to-run prompts that validate WEBGhosting against major websites, see [MAJOR_SITE_SMOKE_TESTS.md](MAJOR_SITE_SMOKE_TESTS.md).
+
+Quick examples:
+
+```bash
+make smoke-list
+make smoke-sites
+
+python3 -m orchestrator.orchestrator --run "Open the Hacker News homepage. Extract the title and author of the 5th article. Then open the comments page for that same 5th article and extract the text of the first 2 comments."
+
+python3 -m orchestrator.orchestrator --run "Open Wikipedia and extract the first paragraph and infobox title for the article on Model Context Protocol."
+
+python3 -m orchestrator.orchestrator --run "Open GitHub and extract the repository name, description, and star count from microsoft/playwright."
+```
+
+Prompting tip: when referring to numbered items, keep the ordinal consistent. A prompt like "5th article" and then "same 4th article" is ambiguous, and the LLM may normalize it one way or the other.
+
+---
+
 ## Environment Variables
 
 - `AI_API_KEY` (required) — API key for your LLM provider
@@ -162,6 +205,8 @@ For recipe writing guide, supported actions, and selector database docs, see [CO
 - `BROWSER_HEADLESS` — set `true` for headless mode
 - `BROWSER_USER_DATA_DIR` — persist cookies/sessions across restarts
 - `HTTP_PROXY` — proxy server URL
+- `HTTPS_PROXY` — proxy server URL for HTTPS traffic
+- `PROXY_LIST` — comma-separated proxy pool for per-run rotation in the orchestrator
 
 Works with any OpenAI-compatible provider:
 ```bash
@@ -175,11 +220,18 @@ export AI_API_KEY="ollama" AI_BASE_URL="http://localhost:11434/v1" AI_MODEL="lla
 export AI_API_KEY="nvapi-..." AI_BASE_URL="https://integrate.api.nvidia.com/v1" AI_MODEL="meta/llama3-70b-instruct"
 ```
 
-## All 33 Tools
+Per-run IP rotation example:
+
+```bash
+export PROXY_LIST="http://proxy1.example.com:8080,http://proxy2.example.com:8080"
+python3 -m orchestrator.orchestrator --run "Go to Hacker News and find the top story title"
+```
+
+## All 34 Tools
 
 **Navigation** — `browse`, `go_back`, `go_forward`
 
-**AI Interaction** — `click`, `type`, `press_key`, `fill_form`, `scroll`, `scroll_to_bottom`
+**AI Interaction** — `reframe_user_prompt`, `click`, `type`, `press_key`, `fill_form`, `scroll`, `scroll_to_bottom`
 
 **Data Extraction** — `extract`, `parallel_extract`, `execute_js`, `get_accessibility_tree`, `get_page_context`
 

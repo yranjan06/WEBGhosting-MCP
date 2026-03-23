@@ -15,15 +15,16 @@
         },
         {
             "id": 3,
-            "action": "js",
-            "code": "(() => { const el = document.querySelector('tr.athing:first-of-type span.titleline > a'); const sub = document.querySelector('tr.athing:first-of-type + tr .subtext'); let cl = null; if (sub) cl = Array.from(sub.querySelectorAll('a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss')); return JSON.stringify(el ? {title: el.innerText.trim(), href: el.href, comments: cl ? cl.href : null} : {error: 'Not found'}); })()",
+            "action": "extract",
+            "selector": "hn.first_story",
+            "schema": "{\"title\": \"string\", \"comments_link\": \"string\"}",
             "save_as": "topic",
             "narrate": "Identifying #1 ranked post..."
         },
         {
             "id": 4,
-            "action": "js",
-            "code": "const el = Array.from(document.querySelectorAll('tr.athing:first-of-type + tr .subtext a')).find(a => a.innerText.includes('comment') || a.innerText.includes('discuss')); if (el) el.click();",
+            "action": "click",
+            "selector": "hn.first_story_comments",
             "narrate": "Opening HN discussion..."
         },
         {
@@ -38,8 +39,9 @@
         },
         {
             "id": 7,
-            "action": "js",
-            "code": "(() => { const t = document.querySelector('table.comment-tree'); if (!t) return '{}'; const rows = Array.from(t.querySelectorAll('tr.comtr')); let k=0; for (let i=0; i<rows.length; i++) { const d = parseInt(rows[i].querySelector('.ind')?.getAttribute('indent')||'0'); if (d===0 && k===0) k++; else if (d>0 && k===1) k++; else if (k>=2 || (d===0 && k>0)) rows[i].remove(); } const c = document.querySelector('.commtext'); return JSON.stringify({comment: c ? c.innerText.trim().substring(0,500) : ''}); })()",
+            "action": "extract",
+            "selector": "hn.comments_container",
+            "schema": "{\"first_comment\": \"string\"}",
             "save_as": "hn_comment",
             "narrate": "Reading first HN comment..."
         },
@@ -72,8 +74,8 @@
         },
         {
             "id": 13,
-            "action": "js",
-            "code": "const r = Array.from(document.querySelectorAll('a')).find(a => a.href.includes('reddit.com') && a.querySelector('h3')); if (r) r.click(); else { const h = document.querySelector('h3'); if (h) h.click(); }",
+            "action": "click",
+            "selector": "google.reddit_result_link",
             "narrate": "Clicking top Reddit result..."
         },
         {
@@ -88,8 +90,9 @@
         },
         {
             "id": 16,
-            "action": "js",
-            "code": "(() => { let fc='', fr=''; const cs=document.querySelectorAll('shreddit-comment'); if(cs.length>0){for(const c of cs){const d=parseInt(c.getAttribute('depth')||'0');const t=c.querySelector('div[slot=\"comment\"]')?.innerText?.trim()||'';const a=c.getAttribute('author')||'';if(d===0&&!fc){fc=a+': '+t;}else if(d===1&&fc&&!fr){fr=a+': '+t;break;}}} if(!fc){const ds=document.querySelectorAll('.comment .md,[data-testid=\"comment\"] p');if(ds.length>0)fc=ds[0]?.innerText?.trim()||'';if(ds.length>1)fr=ds[1]?.innerText?.trim()||'';} return JSON.stringify({comment:fc.substring(0,500),reply:fr.substring(0,500),source:cs.length>0?'new_reddit':'old_reddit'}); })()",
+            "action": "extract",
+            "selector": "reddit.post_body",
+            "schema": "{\"comment\": \"string\", \"reply\": \"string\"}",
             "save_as": "reddit_data",
             "narrate": "Reading Reddit comments..."
         },

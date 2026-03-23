@@ -17,14 +17,13 @@
             "state": "domcontentloaded"
         },
         {
-            "id": 4,
-            "action": "narrate",
-            "narrate": "Scraping the top trending post title and upvotes..."
-        },
-        {
             "id": 5,
-            "action": "js",
-            "code": "(() => { const title = document.querySelector('h3.i18n-list-item-post-title')?.innerText; const link = document.querySelector('a[href*=\"/comments/\"]')?.href; return JSON.stringify({ title, link }); })()",
+            "action": "extract",
+            "selector": "shreddit-post:first-of-type",
+            "schema": {
+                "title": "string",
+                "link": "string (the absolute url to the comments page)"
+            },
             "save_as": "reddit_trend"
         },
         {
@@ -49,9 +48,12 @@
         },
         {
             "id": 10,
-            "action": "js",
-            "code": "(() => { const comment = document.querySelector('shreddit-comment div[slot=\"comment\"]')?.innerText; return JSON.stringify(comment ? comment.trim().slice(0, 200) + '...' : 'No comment found'); })()",
-            "save_as": "top_comment"
+            "action": "extract",
+            "selector": "shreddit-comment[depth='0']",
+            "schema": {
+                "top_comment": "string"
+            },
+            "save_as": "comment_data"
         },
         {
             "id": 11,
@@ -72,7 +74,7 @@
             "id": 14,
             "action": "type_to_notepad",
             "selector": "textarea#area",
-            "template": "Wild how fast LocalLLaMA moves. Today's top topic:\n\"{reddit_trend.title}\"\n\nTop community takeaway:\n\"{top_comment}\"\n\nThoughts on this?\n#LocalLLaMA #AI #OpenSource",
+            "template": "Wild how fast LocalLLaMA moves. Today's top topic:\n\"{reddit_trend.title}\"\n\nTop community takeaway:\n\"{comment_data.top_comment}\"\n\nThoughts on this?\n#LocalLLaMA #AI #OpenSource",
             "speed_ms": 15
         }
     ]

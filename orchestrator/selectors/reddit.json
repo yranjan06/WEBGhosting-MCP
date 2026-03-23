@@ -46,11 +46,12 @@
         ]
     },
     "reddit.post_body": {
-        "selector": "div[slot='text-body']",
+        "selector": "shreddit-post div[slot='text-body'], .expando .md, .usertext-body .md",
         "fallback": ".Post .RichTextJSON-root",
         "extract": [
             "innerText"
         ],
+        "notes": "Always use this selector when extracting the main post or text body. Dual compatible with Old Reddit and New Reddit Web Components.",
         "tags": [
             "read",
             "data",
@@ -58,6 +59,19 @@
             "core",
             "extract",
             "content"
+        ]
+    },
+    "reddit.first_post": {
+        "selector": "shreddit-post div[slot='text-body'], .expando .md, .usertext-body .md, shreddit-comment[depth='0'], .sitetable .comment:first-of-type",
+        "fallback": ".comment .md",
+        "extract": [
+            "innerText"
+        ],
+        "notes": "Alias to capture the main post body or the first comment if body is missing.",
+        "tags": [
+            "read",
+            "data",
+            "extract"
         ]
     },
     "reddit.subreddit_link": {
@@ -91,6 +105,24 @@
             "extract"
         ]
     },
+    "reddit.first_search_result": {
+        "selector": "shreddit-post a[slot='full-post-link'], faceplate-search-result a[slot='full-post-link'], search-telemetry-tracker a[href*='/comments/']",
+        "fallback": "a[data-click-id='body'][href*='/comments/'], a[href*='/comments/']",
+        "extract": [
+            "innerText",
+            "href"
+        ],
+        "notes": "Use this after a Reddit search or subreddit search URL. querySelector will pick the first matching discussion thread.",
+        "tags": [
+            "read",
+            "interact",
+            "data",
+            "navigate",
+            "core",
+            "extract",
+            "search"
+        ]
+    },
     "reddit.upvotes": {
         "selector": "faceplate-number[number]",
         "extract": [
@@ -118,21 +150,24 @@
         ]
     },
     "reddit.first_comment": {
-        "selector": "shreddit-comment[depth='0']",
-        "text_selector": "div[slot='comment']",
+        "selector": ".comment .md",
+        "text_selector": "div[slot='comment'], .md",
         "attrs": [
             "author",
             "score",
             "thingid",
             "permalink"
         ],
-        "fallback": ".comment .md",
-        "notes": "New Reddit uses Web Components with depth attribute",
+        "fallback": "shreddit-comment[depth='0'], .sitetable .comment:first-of-type",
+        "notes": "Dual compatible with Old Reddit and New Reddit Web Components",
         "tags": [
             "core",
             "write",
             "content"
-        ]
+        ],
+        "confidence": 0.8,
+        "last_verified": "2026-03-23T20:41:30.336551+00:00",
+        "healed_at": "2026-03-23T20:41:30.336573+00:00"
     },
     "reddit.first_reply": {
         "selector": "shreddit-comment[depth='1']",

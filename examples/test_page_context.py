@@ -33,7 +33,7 @@ class LightClient:
         self.req_id = 1
         # Initialize
         self._send("initialize", {
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": "2025-11-05",
             "capabilities": {},
             "clientInfo": {"name": "test-context", "version": "1.0"}
         })

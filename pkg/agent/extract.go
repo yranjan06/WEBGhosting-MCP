@@ -34,8 +34,8 @@ var (
 	cacheTTL          = 60 * time.Second
 )
 
-func cacheKey(url, schema string) string {
-	h := sha256.Sum256([]byte(url + "|" + schema))
+func cacheKey(url, schema, instruction, modelOverride, scopeSelector string) string {
+	h := sha256.Sum256([]byte(url + "|" + schema + "|" + instruction + "|" + modelOverride + "|" + scopeSelector))
 	return fmt.Sprintf("%x", h[:16])
 }
 
@@ -167,10 +167,10 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, instructio
 		log.Printf("\033[32m[AI] Native W3C WebMCP Support Detected!\033[0m Future routing will bypass DOM pruning to execute registered native tools.")
 	}
 
-	// Extraction Cache: same URL + schema within 60s = instant return
+	// Extraction Cache: include scope + instruction + model so scoped extracts don't collide.
 	pageURL := page.URL()
 	schemaJSON, _ := json.Marshal(schema)
-	ck := cacheKey(pageURL, string(schemaJSON))
+	ck := cacheKey(pageURL, string(schemaJSON), instruction, modelOverride, scopeSelector)
 
 	extractionCacheMu.RLock()
 	if entry, ok := extractionCache[ck]; ok && time.Since(entry.timestamp) < cacheTTL {
@@ -179,6 +179,32 @@ func (a *Agent) ExtractData(page playwright.Page, schema interface{}, instructio
 		return entry.result, nil
 	}
 	extractionCacheMu.RUnlock()
+
+	// Fast path for scoped Hacker News story/subtext extraction.
+	// HN story data is split across two adjacent rows, so direct DOM reads are more
+	// reliable than asking the extraction LLM to infer title+author from one scoped row.
+	if strings.Contains(pageURL, "news.ycombinator.com") && scopeSelector != "" && strings.Contains(scopeSelector, "athing") {
+		if result, ok := extractHNStoryDirect(page, schema, scopeSelector); ok {
+			extractionCacheMu.Lock()
+			extractionCache[ck] = cacheEntry{result: result, timestamp: time.Now()}
+			extractionCacheMu.Unlock()
+			log.Printf("[AI] HN direct story extraction succeeded for scope %s", scopeSelector)
+			return result, nil
+		}
+	}
+
+	// Fast path for scoped Hacker News comment extraction.
+	// The comment row DOM is stable enough that direct DOM reads are more reliable than
+	// asking the extraction LLM to infer a single comment from a tiny scoped fragment.
+	if scopeSelector != "" && strings.Contains(scopeSelector, "comment-tree") && strings.Contains(scopeSelector, "comtr") {
+		if result, ok := extractHNCommentDirect(page, schema, scopeSelector); ok {
+			extractionCacheMu.Lock()
+			extractionCache[ck] = cacheEntry{result: result, timestamp: time.Now()}
+			extractionCacheMu.Unlock()
+			log.Printf("[AI] HN direct comment extraction succeeded for scope %s", scopeSelector)
+			return result, nil
+		}
+	}
 
 	// 0. Data Readiness: Wait for target selector if it's a comment scope
 	if scopeSelector != "" {
@@ -489,6 +515,197 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 	extractionCacheMu.Unlock()
 
 	return finalMegaJSON, nil
+}
+
+func extractHNStoryDirect(page playwright.Page, schema interface{}, scopeSelector string) (string, bool) {
+	schemaMap, ok := schema.(map[string]interface{})
+	if !ok {
+		return "", false
+	}
+
+	raw, err := page.Evaluate(`(sel) => {
+		let node = null;
+		if (sel.startsWith("xpath=")) {
+			const xpath = sel.substring(6);
+			node = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+		} else {
+			node = document.querySelector(sel);
+		}
+		if (!node) return null;
+
+		let storyRow = null;
+		let subRow = null;
+
+		if (node.matches && node.matches('tr.athing')) {
+			storyRow = node;
+			subRow = node.nextElementSibling;
+		} else {
+			subRow = node;
+			let prev = node.previousElementSibling;
+			if (prev && prev.matches && prev.matches('tr.athing')) {
+				storyRow = prev;
+			}
+		}
+
+		if (!storyRow && !subRow) return null;
+
+		const titleLink = storyRow ? storyRow.querySelector('span.titleline > a') : null;
+		const authorEl = subRow ? subRow.querySelector('a.hnuser') : null;
+		const scoreEl = subRow ? subRow.querySelector('span.score') : null;
+		const ageEl = subRow ? subRow.querySelector('span.age') : null;
+		const commentsEl = subRow ? Array.from(subRow.querySelectorAll('a')).find(a => {
+			const txt = (a.innerText || '').toLowerCase();
+			return txt.includes('comment') || txt.includes('discuss');
+		}) : null;
+
+		const title = titleLink ? titleLink.innerText.trim() : '';
+		const url = titleLink ? (titleLink.href || '') : '';
+		const author = authorEl ? authorEl.innerText.trim() : '';
+		const score = scoreEl ? scoreEl.innerText.trim() : '';
+		const age = ageEl ? ageEl.innerText.trim() : '';
+		const comments = commentsEl ? commentsEl.innerText.trim() : '';
+		const comments_url = commentsEl ? (commentsEl.getAttribute('href') || '') : '';
+
+		if (!title && !author && !score && !age && !comments) return null;
+
+		return { title, url, author, score, age, comments, comments_url };
+	}`, scopeSelector)
+	if err != nil || raw == nil {
+		return "", false
+	}
+
+	base, ok := raw.(map[string]interface{})
+	if !ok {
+		return "", false
+	}
+
+	getString := func(key string) string {
+		if v, ok := base[key]; ok && v != nil {
+			return fmt.Sprintf("%v", v)
+		}
+		return ""
+	}
+
+	item := make(map[string]interface{}, len(schemaMap))
+	for key := range schemaMap {
+		lower := strings.ToLower(key)
+		switch {
+		case strings.Contains(lower, "title"):
+			item[key] = getString("title")
+		case strings.Contains(lower, "author") || strings.Contains(lower, "user"):
+			item[key] = getString("author")
+		case strings.Contains(lower, "score") || strings.Contains(lower, "point"):
+			item[key] = getString("score")
+		case strings.Contains(lower, "age") || strings.Contains(lower, "time"):
+			item[key] = getString("age")
+		case strings.Contains(lower, "comment") && strings.Contains(lower, "url"):
+			item[key] = getString("comments_url")
+		case strings.Contains(lower, "comment"):
+			item[key] = getString("comments")
+		case strings.Contains(lower, "url") || strings.Contains(lower, "link") || strings.Contains(lower, "href"):
+			item[key] = getString("url")
+		default:
+			// If the schema key is unfamiliar, prefer the most meaningful story field.
+			if title := getString("title"); title != "" {
+				item[key] = title
+			} else {
+				item[key] = getString("author")
+			}
+		}
+	}
+
+	if len(item) == 0 {
+		item["title"] = getString("title")
+		item["author"] = getString("author")
+	}
+
+	nonEmpty := false
+	for _, v := range item {
+		if fmt.Sprintf("%v", v) != "" {
+			nonEmpty = true
+			break
+		}
+	}
+	if !nonEmpty {
+		return "", false
+	}
+
+	data, err := json.MarshalIndent([]map[string]interface{}{item}, "", "  ")
+	if err != nil {
+		return "", false
+	}
+	return string(data), true
+}
+
+func extractHNCommentDirect(page playwright.Page, schema interface{}, scopeSelector string) (string, bool) {
+	schemaMap, ok := schema.(map[string]interface{})
+	if !ok {
+		return "", false
+	}
+
+	raw, err := page.Evaluate(`(sel) => {
+		let row = null;
+		if (sel.startsWith("xpath=")) {
+			const xpath = sel.substring(6);
+			row = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+		} else {
+			row = document.querySelector(sel);
+		}
+		if (!row) return null;
+
+		const textEl = row.querySelector('.commtext');
+		const authorEl = row.querySelector('.hnuser');
+		const ageEl = row.querySelector('.age');
+
+		const text = textEl ? textEl.innerText.replace(/\s+/g, ' ').trim() : '';
+		const author = authorEl ? authorEl.innerText.trim() : '';
+		const age = ageEl ? ageEl.innerText.trim() : '';
+
+		if (!text) return null;
+
+		return {
+			text,
+			content: text,
+			comment: text,
+			body: text,
+			author,
+			user: author,
+			age,
+			time: age
+		};
+	}`, scopeSelector)
+	if err != nil || raw == nil {
+		return "", false
+	}
+
+	base, ok := raw.(map[string]interface{})
+	if !ok {
+		return "", false
+	}
+
+	item := make(map[string]interface{}, len(schemaMap))
+	for key := range schemaMap {
+		lower := strings.ToLower(key)
+		switch {
+		case strings.Contains(lower, "author") || strings.Contains(lower, "user"):
+			item[key] = fmt.Sprintf("%v", base["author"])
+		case strings.Contains(lower, "age") || strings.Contains(lower, "time"):
+			item[key] = fmt.Sprintf("%v", base["age"])
+		default:
+			item[key] = fmt.Sprintf("%v", base["text"])
+		}
+	}
+
+	// Preserve a useful default shape if the requested schema was empty-ish.
+	if len(item) == 0 {
+		item["text"] = fmt.Sprintf("%v", base["text"])
+	}
+
+	data, err := json.MarshalIndent([]map[string]interface{}{item}, "", "  ")
+	if err != nil {
+		return "", false
+	}
+	return string(data), true
 }
 
 // splitByLines splits text into chunks of at most maxSize characters,

@@ -1,0 +1,216 @@
+{
+    "name": "Human-Like Hacker News to Reddit",
+    "description": "Slow, human-mimicking workflow to bypass behavioral bot detection",
+    "steps": [
+        {
+            "id": 1,
+            "action": "browse",
+            "url": "https://www.google.com",
+            "narrate": "Opening Google Search..."
+        },
+        {
+            "id": 2,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 3,
+            "action": "sleep",
+            "ms": 2000,
+            "narrate": "Simulating human pause..."
+        },
+        {
+            "id": 4,
+            "action": "type",
+            "selector": "textarea#APjFqb",
+            "text": "Y Combinator Hacker News",
+            "speed_ms": 150,
+            "narrate": "Typing 'Hacker News' slowly..."
+        },
+        {
+            "id": 5,
+            "action": "sleep",
+            "ms": 1000
+        },
+        {
+            "id": 6,
+            "action": "click",
+            "selector": "input[name='btnK']",
+            "narrate": "Clicking the Google Search button..."
+        },
+        {
+            "id": 7,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 8,
+            "action": "sleep",
+            "ms": 1500,
+            "narrate": "Reading search results..."
+        },
+        {
+            "id": 9,
+            "action": "click",
+            "selector": "google.hn_result_link",
+            "narrate": "Clicking the Hacker News link..."
+        },
+        {
+            "id": 10,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 11,
+            "action": "sleep",
+            "ms": 2000,
+            "narrate": "Reading the HN homepage..."
+        },
+        {
+            "id": 12,
+            "action": "scroll",
+            "amount": 300,
+            "narrate": "Scrolling down a bit..."
+        },
+        {
+            "id": 13,
+            "action": "sleep",
+            "ms": 1000
+        },
+        {
+            "id": 14,
+            "action": "extract",
+            "selector": "hn.first_story",
+            "schema": "{\"title\": \"string\"}",
+            "save_as": "hn_data",
+            "narrate": "Mentally noting the top story title..."
+        },
+        {
+            "id": 15,
+            "action": "sleep",
+            "ms": 1500
+        },
+        {
+            "id": 16,
+            "action": "open_tab",
+            "narrate": "Opening a new tab for Reddit search..."
+        },
+        {
+            "id": 17,
+            "action": "browse",
+            "url": "https://www.google.com",
+            "narrate": "Going to Google again..."
+        },
+        {
+            "id": 18,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 19,
+            "action": "sleep",
+            "ms": 1500
+        },
+        {
+            "id": 20,
+            "action": "type",
+            "selector": "textarea#APjFqb",
+            "text": "{hn_data.title} site:reddit.com",
+            "speed_ms": 100,
+            "narrate": "Typing the HN title to search on Reddit..."
+        },
+        {
+            "id": 21,
+            "action": "sleep",
+            "ms": 1000
+        },
+        {
+            "id": 22,
+            "action": "click",
+            "selector": "input[name='btnK']",
+            "narrate": "Clicking Google Search..."
+        },
+        {
+            "id": 23,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 24,
+            "action": "sleep",
+            "ms": 2000,
+            "narrate": "Inspecting Reddit results..."
+        },
+        {
+            "id": 25,
+            "action": "click",
+            "selector": "google.reddit_result_link",
+            "narrate": "Clicking the Reddit discussion link..."
+        },
+        {
+            "id": 26,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 27,
+            "action": "sleep",
+            "ms": 3000,
+            "narrate": "Waiting for Reddit to fully render..."
+        },
+        {
+            "id": 28,
+            "action": "scroll",
+            "amount": 500,
+            "narrate": "Scrolling down into the comments..."
+        },
+        {
+            "id": 29,
+            "action": "sleep",
+            "ms": 2000,
+            "narrate": "Reading the Reddit post..."
+        },
+        {
+            "id": 30,
+            "action": "extract",
+            "selector": "reddit.first_post",
+            "schema": "{\"reddit_comment\": \"string\"}",
+            "save_as": "reddit_data",
+            "narrate": "Extracting exactly what people are saying on Reddit..."
+        },
+        {
+            "id": 31,
+            "action": "sleep",
+            "ms": 1000
+        },
+        {
+            "id": 32,
+            "action": "open_tab",
+            "narrate": "Opening the final tab for the Notebook..."
+        },
+        {
+            "id": 33,
+            "action": "browse",
+            "url": "https://www.rapidtables.com/tools/notepad.html",
+            "narrate": "Navigating to Digital Notepad..."
+        },
+        {
+            "id": 34,
+            "action": "wait",
+            "state": "domcontentloaded"
+        },
+        {
+            "id": 35,
+            "action": "sleep",
+            "ms": 2000
+        },
+        {
+            "id": 36,
+            "action": "type_to_notepad",
+            "selector": "textarea#area",
+            "template": "📝 MY HUMAN-LIKE RESEARCH ANALYSIS\n\n1. Hacker News Trend:\n\"{hn_data.title}\"\n\n2. Reddit Community Opinion:\n{reddit_data.reddit_comment}\n\n3. Conclusion:\nThe AI successfully bypassed behavioral blocks and wrote this completely naturally!",
+            "speed_ms": 35,
+            "narrate": "Writing a custom analysis draft slowly and carefully..."
+        }
+    ]
+}

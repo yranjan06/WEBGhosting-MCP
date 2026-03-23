@@ -27,6 +27,13 @@ debug_*.py
 debug_*.txt
 *.jsonl
 input.txt
+*.log
+*.orig
+*.patch
+*.wav
+temp_command.wav
+.smoke-logs/
+.pycache/
 
 # Go
 vendor/
