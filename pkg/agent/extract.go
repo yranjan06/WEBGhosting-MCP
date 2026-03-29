@@ -483,6 +483,31 @@ Return ONLY that exact string marker in a JSON format: {"marker": "string"}`
 	finalMegaBytes, _ := json.MarshalIndent(masterArray, "", "  ")
 	finalMegaJSON := string(finalMegaBytes)
 
+	// Step 4b: Deduplicate merged results
+	if len(masterArray) > 1 {
+		seen := make(map[string]bool)
+		dedupedArray := []interface{}{}
+		for _, item := range masterArray {
+			canonical, err := json.Marshal(item)
+			if err != nil {
+				dedupedArray = append(dedupedArray, item)
+				continue
+			}
+			key := string(canonical)
+			if !seen[key] {
+				seen[key] = true
+				dedupedArray = append(dedupedArray, item)
+			}
+		}
+		if removed := len(masterArray) - len(dedupedArray); removed > 0 {
+			log.Printf("[AI] Dedup: removed %d duplicate items (kept %d)", removed, len(dedupedArray))
+			masterArray = dedupedArray
+			finalMegaBytes, _ = json.MarshalIndent(masterArray, "", "  ")
+			finalMegaJSON = string(finalMegaBytes)
+		}
+	}
+
+
 	// STEP 5: Final Global Reduce Phase (if instruction is provided)
 	if instruction != "" && len(masterArray) > 0 {
 		log.Printf("[AI] → Step 5: Applying User Instruction via Final LLM Reduce Phase: '%s'", instruction)

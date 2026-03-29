@@ -208,7 +208,7 @@
             "id": 36,
             "action": "type_to_notepad",
             "selector": "textarea#area",
-            "template": "📝 MY HUMAN-LIKE RESEARCH ANALYSIS\n\n1. Hacker News Trend:\n\"{hn_data.title}\"\n\n2. Reddit Community Opinion:\n{reddit_data.reddit_comment}\n\n3. Conclusion:\nThe AI successfully bypassed behavioral blocks and wrote this completely naturally!",
+            "template": "MY HUMAN-LIKE RESEARCH ANALYSIS\n\n1. Hacker News Trend:\n\"{hn_data.title}\"\n\n2. Reddit Community Opinion:\n{reddit_data.reddit_comment}\n\n3. Conclusion:\nThe AI successfully bypassed behavioral blocks and wrote this completely naturally!",
             "speed_ms": 35,
             "narrate": "Writing a custom analysis draft slowly and carefully..."
         }

@@ -25,6 +25,7 @@ Thumbs.db
 # Debug artifacts
 debug_*.py
 debug_*.txt
+/test_proxy.py
 *.jsonl
 input.txt
 *.log
@@ -47,3 +48,4 @@ docker-compose.override.yml
 .tool-versions
 tmp_webmcp
 __pycache__/
+/config

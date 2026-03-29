@@ -15,7 +15,7 @@ func RandomDelay(minMs, maxMs int) {
 }
 
 // HumanTypeText types text character-by-character with random delays between keystrokes.
-// Each keystroke has a random delay of 50-150ms, simulating a real human typist.
+// Delay scales with text length: short texts type faster to avoid excessive waits.
 func HumanTypeText(page playwright.Page, selector, text string) error {
 	// Click the element first to focus it (forced to bypass React overlays)
 	if err := page.Locator(selector).Click(playwright.LocatorClickOptions{Force: playwright.Bool(true)}); err != nil {
@@ -26,12 +26,20 @@ func HumanTypeText(page playwright.Page, selector, text string) error {
 	page.Locator(selector).Focus()
 	RandomDelay(100, 300) // Brief pause after focusing
 
+	// Scale typing speed based on text length
+	minDelay, maxDelay := 50, 150 // Default: ~40-80 WPM
+	textLen := len(text)
+	if textLen <= 20 {
+		minDelay, maxDelay = 30, 80 // Fast for short strings
+	} else if textLen <= 50 {
+		minDelay, maxDelay = 40, 100 // Medium for moderate strings
+	}
+
 	for _, ch := range text {
 		if err := page.Keyboard().Press(string(ch)); err != nil {
 			return err
 		}
-		// Random delay between 50-150ms per character (human typing speed ~40-80 WPM)
-		RandomDelay(50, 150)
+		RandomDelay(minDelay, maxDelay)
 	}
 	return nil
 }

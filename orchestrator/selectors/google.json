@@ -125,31 +125,59 @@
     },
     "google.hn_result_link": {
         "selector": "a[jsname='UWckNb'][href*='news.ycombinator.com']",
-        "extract": ["href"],
+        "extract": [
+            "href"
+        ],
         "notes": "Use this with the extract action to get the Hacker News link from Google, then use browse to navigate to it safely (avoids ghost clicks/new tabs).",
-        "tags": ["read", "navigate", "core", "extract"]
+        "tags": [
+            "read",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "google.reddit_result_link": {
         "selector": "a[jsname='UWckNb'][href*='reddit.com']",
-        "extract": ["href"],
+        "extract": [
+            "href"
+        ],
         "notes": "Use this with the extract action to get the Reddit link from Google, then use browse to navigate to it safely.",
-        "tags": ["read", "navigate", "core", "extract"]
+        "tags": [
+            "read",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "google.twitter_result_link": {
         "selector": "a[jsname='UWckNb'][href*='twitter.com'], a[jsname='UWckNb'][href*='x.com']",
-        "extract": ["href"],
+        "extract": [
+            "href"
+        ],
         "notes": "Use this with the extract action to get the Twitter/X link from Google, then use browse to navigate to it safely.",
-        "tags": ["read", "navigate", "core", "extract"]
+        "tags": [
+            "read",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "google.wikipedia_result_link": {
         "selector": "a[jsname='UWckNb'][href*='wikipedia.org']",
-        "extract": ["href"],
+        "extract": [
+            "href"
+        ],
         "notes": "Use this with the extract action to get the Wikipedia link from Google, then use browse to navigate to it safely.",
-        "tags": ["read", "navigate", "core", "extract"]
+        "tags": [
+            "read",
+            "navigate",
+            "core",
+            "extract"
+        ]
     },
     "google.result_link": {
-        "selector": "a[jsname='UWckNb']",
-        "fallback": "div.g a",
+        "selector": "div.g a",
+        "fallback": "a[jsname='UWckNb']",
         "extract": [
             "href"
         ],
@@ -160,7 +188,10 @@
             "navigate",
             "core",
             "extract"
-        ]
+        ],
+        "confidence": 0.8,
+        "last_verified": "2026-03-29T18:37:01.335921+00:00",
+        "healed_at": "2026-03-29T18:37:01.335943+00:00"
     },
     "google.result_snippet": {
         "selector": "div.VwiC3b",

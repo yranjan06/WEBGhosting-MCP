@@ -14,6 +14,7 @@ import subprocess
 import json
 import sys
 import os
+from pathlib import Path
 
 # Terminal colors
 GREEN  = "\033[32m"
@@ -44,6 +45,8 @@ class WEBGhostingClient:
             print("Run: export AI_API_KEY='your-key-here'")
             sys.exit(1)
 
+        self._warn_if_binary_is_stale(binary)
+
         self.process = subprocess.Popen(
             [binary],
             stdin=subprocess.PIPE,
@@ -54,6 +57,33 @@ class WEBGhostingClient:
         )
         self.req_id = 1
         self._initialize()
+
+    def _warn_if_binary_is_stale(self, binary):
+        """Warn during local development if the compiled binary is older than server source."""
+        try:
+            binary_path = Path(binary).resolve()
+            if not binary_path.exists():
+                return
+
+            source_candidates = [
+                Path(__file__).resolve().parents[1] / "cmd" / "server" / "main.go",
+                Path(__file__).resolve().parents[1] / "cmd" / "server" / "tools.go",
+                Path(__file__).resolve().parents[1] / "cmd" / "server" / "config.go",
+                Path(__file__).resolve().parents[1] / "cmd" / "server" / "banner.go",
+            ]
+            existing_sources = [path for path in source_candidates if path.exists()]
+            if not existing_sources:
+                return
+
+            binary_mtime = binary_path.stat().st_mtime
+            newest_source = max(path.stat().st_mtime for path in existing_sources)
+
+            if newest_source > binary_mtime:
+                print(f"{YELLOW}WARNING: ./webmcp is older than the current Go source.{RESET}")
+                print(f"{DIM}Rebuild it so banner/code changes appear: make build{RESET}")
+        except Exception:
+            # Never block startup on a dev-only freshness check.
+            pass
 
     def _initialize(self):
         msg = self._rpc("initialize", {

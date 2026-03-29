@@ -223,8 +223,11 @@ func (e *Engine) EnsureInitialized() error {
 				Headless: playwright.Bool(headless),
 				Args: []string{
 					"--disable-blink-features=AutomationControlled",
+					"--window-position=0,0",
+					"--window-size=960,1080",
 				},
 				UserAgent: playwright.String("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"),
+				Viewport:  &playwright.Size{Width: 960, Height: 1080},
 			}
 			if proxy != nil {
 				launchOpts.Proxy = proxy
@@ -241,6 +244,8 @@ func (e *Engine) EnsureInitialized() error {
 				Headless: playwright.Bool(headless),
 				Args: []string{
 					"--disable-blink-features=AutomationControlled",
+					"--window-position=0,0",
+					"--window-size=960,1080",
 				},
 			}
 			if proxy != nil {
@@ -256,6 +261,7 @@ func (e *Engine) EnsureInitialized() error {
 
 			context, err = browser.NewContext(playwright.BrowserNewContextOptions{
 				UserAgent: playwright.String("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"),
+				Viewport:  &playwright.Size{Width: 960, Height: 1080},
 			})
 			if err != nil {
 				e.initErr = fmt.Errorf("could not create context: %v", err)

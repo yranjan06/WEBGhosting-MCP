@@ -8,6 +8,34 @@ from sarvamai import AsyncSarvamAI
 import numpy as np
 import wave
 
+MIC_MATRIX = [
+    [0, 0, 1, 1, 1, 0, 0],
+    [0, 0, 1, 2, 1, 0, 0],
+    [0, 0, 1, 2, 1, 0, 0],
+    [0, 0, 1, 2, 1, 0, 0],
+    [0, 1, 1, 2, 1, 1, 0],
+    [0, 1, 1, 2, 1, 1, 0],
+    [0, 1, 1, 2, 1, 1, 0],
+    [0, 0, 1, 1, 1, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0],
+    [0, 1, 1, 1, 1, 1, 0],
+]
+
+
+def render_mic_html():
+    rows = []
+    for row in MIC_MATRIX:
+        cells = []
+        for px in row:
+            klass = "mic-off" if px == 0 else f"mic-on m{px}"
+            cells.append(f'<div class="mic-px {klass}"></div>')
+        rows.append(f'<div class="mic-row">{"".join(cells)}</div>')
+    return f'<div class="mic-grid" aria-hidden="true">{"".join(rows)}</div>'
+
+
+MIC_HTML = render_mic_html()
+
 async def transcribe_audio(audio_numpy):
     if audio_numpy is None:
         return ""
@@ -116,10 +144,11 @@ def execute_command(text):
 
 custom_css = """
 body, .gradio-container {
-    background-color: #171717 !important;
+    background-color: #0d0a0f !important;
+    color: #fcebeb !important;
 }
 
-/* Hide the default Gradio audio block visually so only our custom Amoeba shows.
+/* Hide the default Gradio audio block visually so only our custom mic button shows.
    We CANNOT use display:none because Safari blocks microphone clicks on hidden elements! */
 #hidden-audio {
     position: absolute !important;
@@ -130,68 +159,138 @@ body, .gradio-container {
     overflow: hidden !important;
 }
 
-/* Container for our custom Amoeba Button */
-.amoeba-wrapper {
+.mic-wrapper {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 40px auto;
-    height: 150px;
-    width: 150px;
+    margin: 28px auto 18px;
+    min-height: 220px;
 }
 
-/* The Pixel Art Red Circle Amoeba styling */
-.pixel-amoeba {
-    width: 100px;
-    height: 100px;
-    background-color: #ef4444; /* bright red */
+.mic-shell {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 30px;
     cursor: pointer;
-    box-shadow:
-        inset -8px -8px 0px 0px rgba(0,0,0,0.3),
-        inset 8px 8px 0px 0px rgba(255,255,255,0.4),
-        0 0 0 4px #000;
-    transition: all 0.3s;
+    transition: transform 0.18s ease, filter 0.25s ease;
+    user-select: none;
+}
+
+.mic-shell:hover {
+    transform: translateY(-2px);
+}
+
+.mic-shell::before {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border-radius: 28px;
+    background: radial-gradient(circle, rgba(226,75,74,0.22) 0%, rgba(240,149,149,0.12) 35%, rgba(13,10,15,0) 72%);
+    opacity: 0.55;
+    filter: blur(12px);
+    transition: opacity 0.2s ease;
+}
+
+.mic-grid {
     display: flex;
+    flex-direction: column;
+    gap: 2px;
     justify-content: center;
     align-items: center;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 10px 18px rgba(0,0,0,0.45));
+    transform-origin: center center;
 }
 
-/* Text inside the amoeba */
-.pixel-amoeba span {
-    font-family: monospace;
-    font-size: 2rem;
-    pointer-events: none;
-    opacity: 0.8;
+.mic-row {
+    display: flex;
+    gap: 2px;
 }
 
-/* Base shape: Perfect Circle */
-.pixel-circle {
-    border-radius: 50%;
+.mic-px {
+    width: 16px;
+    height: 16px;
+    border-radius: 1px;
 }
 
-/* Wavy Amoeba shape (listening mode) */
-.pixel-wavy {
-    animation: pixelmorph 1s steps(6, end) infinite;
-    background-color: #fsa444; /* changes a bit randomly */
-    box-shadow:
-        inset -4px -4px 0px 0px rgba(0,0,0,0.3),
-        inset 4px 4px 0px 0px rgba(255,255,255,0.4),
-        0 0 0 4px #000,
-        0 0 20px 10px rgba(239, 68, 68, 0.6);
+.mic-off {
+    background: transparent;
 }
 
-@keyframes pixelmorph {
-    0% { border-radius: 60% 40% 50% 50%; transform: scale(1); }
-    25% { border-radius: 50% 60% 40% 60%; transform: scale(1.05); }
-    50% { border-radius: 40% 50% 60% 40%; transform: scale(1.1); }
-    75% { border-radius: 40% 40% 60% 60%; transform: scale(1.05); }
-    100% { border-radius: 60% 40% 50% 50%; transform: scale(1); }
+.mic-on {
+    box-shadow: inset 0 0 0 1px #2a0808;
+}
+
+.m1 { background: #791F1F; }
+.m2 { background: #E24B4A; }
+
+.mic-shell.is-idle .mic-grid {
+    animation: mic-idle 2.6s ease-in-out infinite;
+}
+
+.mic-shell.is-listening::before {
+    opacity: 0.95;
+    animation: mic-halo 1s ease-in-out infinite;
+}
+
+.mic-shell.is-listening .mic-grid {
+    animation: mic-listen-bob 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px rgba(226,75,74,0.45)) drop-shadow(0 0 26px rgba(240,149,149,0.18));
+}
+
+.mic-shell.is-listening .mic-row:nth-child(odd) {
+    animation: mic-row-left 0.7s ease-in-out infinite;
+}
+
+.mic-shell.is-listening .mic-row:nth-child(even) {
+    animation: mic-row-right 0.7s ease-in-out infinite;
+}
+
+.mic-shell.is-processing::before {
+    opacity: 0.85;
+}
+
+.mic-shell.is-processing .mic-grid {
+    animation: mic-processing 1.2s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(252,235,235,0.25));
+}
+
+@keyframes mic-idle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+@keyframes mic-listen-bob {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-5px) scale(1.06); }
+}
+
+@keyframes mic-row-left {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-1px); }
+}
+
+@keyframes mic-row-right {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(1px); }
+}
+
+@keyframes mic-processing {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.96); }
+}
+
+@keyframes mic-halo {
+    0%, 100% { transform: scale(0.94); }
+    50% { transform: scale(1.08); }
 }
 
 .center-text {
     text-align: center;
-    color: #a3a3a3;
+    color: #f7c1c1;
     font-family: Courier, monospace;
     margin-top: 10px;
 }
@@ -201,16 +300,16 @@ js_code = """
 async () => {
     let isRecording = false;
     const initInterval = setInterval(() => {
-        let orb = document.getElementById('amoeba-orb');
-        let icon = document.getElementById('orb-icon');
+        let mic = document.getElementById('mic-shell');
         let textStatus = document.getElementById('orb-status');
         let audioDiv = document.querySelector('#hidden-audio');
-        if (!orb || !audioDiv) return; // Wait until DOM is fully injected by Gradio
+        if (!mic || !audioDiv) return; // Wait until DOM is fully injected by Gradio
 
         clearInterval(initInterval);
-        console.log("Amoeba Orb successfully attached to Gradio DOM!");
+        mic.classList.add('is-idle');
+        console.log("Pixel microphone successfully attached to Gradio DOM!");
 
-        orb.addEventListener('click', () => {
+        const toggleRecording = () => {
             let recordBtn = audioDiv.querySelector('button[aria-label="Record"]');
             let stopBtn = audioDiv.querySelector('button[aria-label="Stop"]');
             // Gradio 6 sometimes just has a button without specific aria labels depending on state.
@@ -221,21 +320,27 @@ async () => {
                 if (recordBtn) recordBtn.click();
                 else if (firstBtn) firstBtn.click();
 
-                orb.classList.remove('pixel-circle');
-                orb.classList.add('pixel-wavy');
-                icon.innerText = "🛑";
-                textStatus.innerText = "Listening... Amoeba is active!";
+                mic.classList.remove('is-idle', 'is-processing');
+                mic.classList.add('is-listening');
+                textStatus.innerText = "Listening... microphone is live.";
                 isRecording = true;
             } else {
                 // STOP RECORDING
                 if (stopBtn) stopBtn.click();
                 else if (firstBtn) firstBtn.click(); // often the single center button just toggles
 
-                orb.classList.remove('pixel-wavy');
-                orb.classList.add('pixel-circle');
-                icon.innerText = "🎙️";
-                textStatus.innerText = "Processing & Execution Mode... Please wait.";
+                mic.classList.remove('is-listening');
+                mic.classList.add('is-processing');
+                textStatus.innerText = "Processing your command...";
                 isRecording = false;
+            }
+        };
+
+        mic.addEventListener('click', toggleRecording);
+        mic.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleRecording();
             }
         });
     }, 500);
@@ -244,14 +349,13 @@ async () => {
 
 # --- GRADIO UI ---
 with gr.Blocks() as demo:
-    gr.Markdown("# 👾 Pixel Voice Agent", elem_classes=["center-text"])
-    gr.Markdown("<div id='orb-status' class='center-text'>Click the red blob to start!</div>")
+    gr.Markdown("# WEBGhosting Voice Agent", elem_classes=["center-text"])
+    gr.Markdown("<div id='orb-status' class='center-text'>Click the mic to start recording.</div>")
 
-    # Custom HTML Amoeba (Red Pixel Art Circle)
-    gr.HTML('''
-        <div class="amoeba-wrapper">
-            <div id="amoeba-orb" class="pixel-amoeba pixel-circle">
-                <span id="orb-icon">🎙️</span>
+    gr.HTML(f'''
+        <div class="mic-wrapper">
+            <div id="mic-shell" class="mic-shell" role="button" tabindex="0" aria-label="Start or stop voice recording">
+                {MIC_HTML}
             </div>
         </div>
     ''')

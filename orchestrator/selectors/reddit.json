@@ -31,13 +31,12 @@
         ]
     },
     "reddit.post_title": {
-        "selector": "a[slot='full-post-link']",
-        "fallback": "shreddit-post a[slot='full-post-link'], h3.i18n-list-item-post-title",
+        "selector": "h1#post-title-t3, [slot='title']",
+        "fallback": "shreddit-post h1, a[slot='full-post-link']",
         "extract": [
-            "innerText",
-            "href"
+            "innerText"
         ],
-        "notes": "New Reddit (2024+) uses shreddit-post Web Components. Use a[slot='full-post-link'] to get title text AND href. Old fallback h3 may still work on some views.",
+        "notes": "Reddit 2025+ thread pages use h1#post-title-t3 or [slot='title'] for the actual post title heading. Fallback to shreddit-post h1 or old full-post-link.",
         "tags": [
             "read",
             "core",
@@ -150,7 +149,7 @@
         ]
     },
     "reddit.first_comment": {
-        "selector": ".comment .md",
+        "selector": "shreddit-comment[depth='0'] div[slot='comment'], .comment .md",
         "text_selector": "div[slot='comment'], .md",
         "attrs": [
             "author",
@@ -158,16 +157,15 @@
             "thingid",
             "permalink"
         ],
-        "fallback": "shreddit-comment[depth='0'], .sitetable .comment:first-of-type",
-        "notes": "Dual compatible with Old Reddit and New Reddit Web Components",
+        "fallback": ".sitetable .comment:first-of-type",
+        "notes": "New Reddit uses shreddit-comment Web Components with depth attribute. Old Reddit uses .comment .md.",
         "tags": [
             "core",
             "write",
-            "content"
-        ],
-        "confidence": 0.8,
-        "last_verified": "2026-03-23T20:41:30.336551+00:00",
-        "healed_at": "2026-03-23T20:41:30.336573+00:00"
+            "content",
+            "read",
+            "extract"
+        ]
     },
     "reddit.first_reply": {
         "selector": "shreddit-comment[depth='1']",

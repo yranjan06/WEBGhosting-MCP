@@ -746,6 +746,20 @@ def generate_recipe(command, selectors_db):
     if reframed_command != command:
         command = reframed_command
 
+    # [GUARD] Reject incomplete / cut-off prompts (e.g. voice STT truncation)
+    _trailing_conjunctions = {"and", "then", "or", "aur", "kar", "karo", "fir", "phir", "but"}
+    cmd_words = command.strip().split()
+    if len(cmd_words) < 3:
+        print(f"\n  {RED}✗ Command too short: \"{command}\"{RESET}")
+        print(f"  {DIM}  Please provide a more detailed command (at least 3 words).{RESET}\n")
+        return None
+    if cmd_words[-1].lower().rstrip(".,!?") in _trailing_conjunctions:
+        print(f"\n  {RED}✗ Command appears incomplete (ends with \"{cmd_words[-1]}\"):{RESET}")
+        print(f"  {DIM}  \"{command}\"{RESET}")
+        print(f"  {DIM}  Please complete your command and try again.{RESET}\n")
+        return None
+
+
     # Use BOTH the raw and reframed prompt for routing/examples.
     # Reframing can occasionally simplify away destination hints like "on reddit",
     # which makes selector injection too narrow for cross-site workflows.
@@ -790,9 +804,12 @@ def generate_recipe(command, selectors_db):
         _track_tokens(resp_data, "recipe")
         content = resp_data["choices"][0]["message"]["content"].strip()
 
-        # Extract JSON block between first '{' and last '}'
+        # Extract JSON block between first '{' or '[' and last '}' or ']'
         start_idx = content.find('{')
-        end_idx = content.rfind('}')
+        arr_start = content.find('[')
+        if arr_start != -1 and (start_idx == -1 or arr_start < start_idx):
+            start_idx = arr_start
+        end_idx = max(content.rfind('}'), content.rfind(']'))
 
         if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
             content = content[start_idx:end_idx+1]
@@ -803,7 +820,28 @@ def generate_recipe(command, selectors_db):
         # Pre-process content to fix common LLM JSON escaping bugs (like invalid \')
         content = content.replace(r"\'", "'")
 
-        recipe = json.loads(content)
+        # Try parsing as-is first
+        recipe = None
+        try:
+            recipe = json.loads(content)
+        except json.JSONDecodeError:
+            # Fallback: LLM returned comma-separated objects like {step1}, {step2}
+            # Wrap them in an array and try again
+            try:
+                recipe = json.loads(f"[{content}]")
+            except json.JSONDecodeError as e2:
+                spinner.fail(f"JSON parse error: {e2}")
+                info_msg(f"Raw: {content[:200]}")
+                return None
+
+        # Normalise: wrap bare arrays or step objects into a recipe
+        if isinstance(recipe, list):
+            # LLM returned a bare array of steps — wrap it
+            recipe = {"name": "Unnamed", "steps": recipe}
+        elif isinstance(recipe, dict) and "steps" not in recipe and "action" in recipe:
+            # LLM returned a single step object — wrap it
+            recipe = {"name": "Unnamed", "steps": [recipe]}
+
         steps = len(recipe.get("steps", []))
         spinner.stop(f"Recipe ready: \"{recipe.get('name', 'Unnamed')}\" ({steps} steps)")
         recipe_banner(recipe.get('name', 'Unnamed'), steps)
@@ -811,10 +849,6 @@ def generate_recipe(command, selectors_db):
 
     except HTTPRequestError as e:
         spinner.fail(f"LLM API error: {e}")
-        return None
-    except json.JSONDecodeError as e:
-        spinner.fail(f"JSON parse error: {e}")
-        info_msg(f"Raw: {content[:200]}")
         return None
 
 

@@ -52,15 +52,8 @@ func main() {
 	log.SetPrefix(ColorDim + "[webghosting] " + ColorReset)
 
 	// ─── Banner ───
-	fmt.Fprintf(os.Stderr, "\n%s", ColorCyan)
-	fmt.Fprintln(os.Stderr, `  __        _______ ____   ____  _               _   _             `)
-	fmt.Fprintln(os.Stderr, `  \ \      / / ____| __ ) / ___|| |__   ___  ___| |_(_)_ __   __ _ `)
-	fmt.Fprintln(os.Stderr, `   \ \ /\ / /|  _| |  _ \| |  _ | '_ \ / _ \/ __| __| | '_ \ / _`+"`"+` |`)
-	fmt.Fprintln(os.Stderr, `    \ V  V / | |___| |_) | |_| || | | | (_) \__ \ |_| | | | | (_| |`)
-	fmt.Fprintln(os.Stderr, `     \_/\_/  |_____|____/ \____||_| |_|\___/|___/\__|_|_| |_|\__, |`)
-	fmt.Fprintln(os.Stderr, `                                                             |___/ `)
-	fmt.Fprintf(os.Stderr, "%s\n", ColorReset)
-	fmt.Fprintf(os.Stderr, "  %sType: Local Agentic Browser  │  Mode: Stealth  │  v%s%s\n", ColorDim, Version, ColorReset)
+	PrintLaunchBanner(os.Stderr)
+	fmt.Fprintf(os.Stderr, "  %sType: Local Agentic Browser  │  Mode: Stealth%s\n", ColorDim, ColorReset)
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, "  %sQuick Start:%s\n", ColorBold, ColorReset)
 	fmt.Fprintf(os.Stderr, "  %sAdd to your IDE's MCP config (settings.json or mcp.json):%s\n", ColorDim, ColorReset)
