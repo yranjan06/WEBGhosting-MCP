@@ -35,7 +35,7 @@ class WEBGhostingClient:
         AI_MODEL    (default: gpt-4o)
     """
 
-    def __init__(self, binary="./webmcp", env_overrides=None):
+    def __init__(self, binary="./webmcp", env_overrides=None, show_server_logs=True):
         env = os.environ.copy()
         if env_overrides:
             env.update(env_overrides)
@@ -47,11 +47,13 @@ class WEBGhostingClient:
 
         self._warn_if_binary_is_stale(binary)
 
+        stderr_target = sys.stderr if show_server_logs else subprocess.DEVNULL
+
         self.process = subprocess.Popen(
             [binary],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=sys.stderr,
+            stderr=stderr_target,
             text=True,
             env=env
         )
