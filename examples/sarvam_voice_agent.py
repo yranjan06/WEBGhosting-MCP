@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import base64
 import glob
@@ -18,21 +19,17 @@ from urllib import error as urlerror
 from urllib.parse import quote, urlparse
 from urllib import request as urlrequest
 
-try:
-    import pyaudio
-except ImportError:
-    print("Please install PyAudio: pip install pyaudio")
-    raise SystemExit(1)
+# Lazy imports — only needed in voice mode
+pyaudio = None  # type: ignore
+AsyncSarvamAI = None  # type: ignore
 
-from sarvamai import AsyncSarvamAI
 from client import WEBGhostingClient
 
 # Ensure orchestrator path is resolvable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from orchestrator.ui import C, panel, _term_width
 
-# Audio configuration
-FORMAT = pyaudio.paInt16
+# Audio configuration (values set after pyaudio import in voice mode)
 CHANNELS = 1
 RATE = 16000
 CHUNK = 512
@@ -330,7 +327,7 @@ def normalize_spoken_command(command: str) -> str:
 
     replacements = [
         (
-            r"^(right|rite)\s+(.+?)\s*$",
+            r"^(right|rite|write)\s+(.+?)\s*$",
             r"type \2",
         ),
         (
@@ -892,11 +889,102 @@ class VoiceBrowserSession:
             return None
         return None
 
+    # Ordinal word → number mapping
+    _ORDINAL_MAP = {
+        "first": 1, "1st": 1, "second": 2, "2nd": 2, "third": 3, "3rd": 3,
+        "fourth": 4, "4th": 4, "fifth": 5, "5th": 5, "sixth": 6, "6th": 6,
+        "seventh": 7, "7th": 7, "eighth": 8, "8th": 8, "ninth": 9, "9th": 9,
+        "tenth": 10, "10th": 10, "top": 1,
+    }
+
+    # Selector templates for lists of target items, keyed by host token → target type → CSS
+    _NTH_LIST_SELECTORS: Dict[str, Dict[str, str]] = {
+        "news.ycombinator.com": {
+            "article": "tr.athing span.titleline > a",
+            "story": "tr.athing span.titleline > a",
+            "post": "tr.athing span.titleline > a",
+            "result": "tr.athing span.titleline > a",
+            "link": "tr.athing span.titleline > a",
+            "item": "tr.athing span.titleline > a",
+            "comment": "tr.athing + tr .subtext a[href^='item?id=']:last-child",
+        },
+        "reddit.com": {
+            "post": "article a[data-click-id='body']",
+            "article": "article a[data-click-id='body']",
+            "result": "article a[data-click-id='body']",
+            "comment": "article a[data-click-id='comments']",
+        },
+        "github.com": {
+            "result": "li.repo-list-item a",
+            "repo": "li.repo-list-item a",
+        },
+    }
+
+    def _click_nth_with_js(self, snapshot: Dict[str, Any], n: int, target_type: str) -> Optional[Dict[str, Any]]:
+        """Click the Nth article/comment/post using cached selectors via JS."""
+        current_url = self._current_url(snapshot)
+        try:
+            host = (urlparse(current_url).hostname or "").lower()
+        except Exception:
+            return None
+
+        # Find matching host
+        site_selectors = None
+        for host_key, selectors in self._NTH_LIST_SELECTORS.items():
+            if host_key in host:
+                site_selectors = selectors
+                break
+
+        if not site_selectors:
+            return None
+
+        css_selector = site_selectors.get(target_type)
+        if not css_selector:
+            return None
+
+        script = f"""
+(() => {{
+  const elements = document.querySelectorAll({json.dumps(css_selector)});
+  const el = elements[{n} - 1];
+  if (!el) return JSON.stringify({{ ok: false, reason: "not found" }});
+  const text = el.innerText || el.textContent || "";
+  const href = el.href || "";
+  el.click();
+  return JSON.stringify({{ ok: true, text: text.trim().substring(0, 120), href: href, selector: {json.dumps(css_selector)} }});
+}})()
+""".strip()
+
+        try:
+            raw = self._call_tool("execute_js", {"script": script})
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict) and parsed.get("ok"):
+                return parsed
+        except Exception:
+            return None
+        return None
+
+    # Sites where JS fast-fill triggers bot detection — use stealth MCP type instead
+    _BOT_DETECTION_HOSTS = (
+        "google.", "reddit.com", "linkedin.com", "x.com", "twitter.com",
+        "amazon.", "flipkart.com", "facebook.com", "instagram.com",
+    )
+
+    def _is_bot_protected_site(self, snapshot: Dict[str, Any]) -> bool:
+        """Check if the current site is known to aggressively detect bots."""
+        current_url = self._current_url(snapshot)
+        try:
+            host = (urlparse(current_url).hostname or "").lower()
+        except Exception:
+            return False
+        return any(token in host for token in self._BOT_DETECTION_HOSTS)
+
     def _execute_type_step(self, args: Dict[str, Any], snapshot: Dict[str, Any]) -> Dict[str, Any]:
         intent = args.pop("_selector_intent", "input_field")
         selector_candidates = args.pop("_selector_candidates", [])
         prompt = args.get("prompt", "")
         text = args.get("text", "")
+
+        # Try JS fast-fill first (instant, uses our cached selectors)
         fast_fill = self._fast_fill_with_js(selector_candidates, text)
         if fast_fill:
             selector = fast_fill.get("selector", "the active input")
@@ -907,6 +995,7 @@ class VoiceBrowserSession:
                 "selector_path": "selector_fast_fill",
             }
 
+        # Fallback to MCP stealth type tool
         try:
             return {
                 "result": self._call_tool("type", {"prompt": prompt, "text": text}),
@@ -962,7 +1051,8 @@ class VoiceBrowserSession:
         elif tool == "click" and "_selector_candidates" not in args:
             prompt = str(args.get("prompt", ""))
             lower_prompt = prompt.lower()
-            if "first result" in lower_prompt or lower_prompt in {"first", "1st"}:
+            first_item_pattern = re.search(r"(first|1st|top)\s+(result|article|story|post|link|item)", lower_prompt)
+            if first_item_pattern or lower_prompt in {"first", "1st"}:
                 args = self._click_args(snapshot, prompt or "the first result", intent="first_result")
 
         return {"tool": tool, "args": args}
@@ -1025,7 +1115,23 @@ class VoiceBrowserSession:
                 "steps": [],
             }
 
-        if "new tab" in normalized or "open tab" in normalized:
+        # Only match pure "open/new tab" commands, not "open X in new tab"
+        open_in_new_tab_match = re.search(r"(?:open|go to|navigate to|come back to|go back to|return to|switch to)\s+(.+?)\s+in\s+(?:a\s+)?new\s+tab", normalized)
+        if open_in_new_tab_match:
+            site_name = open_in_new_tab_match.group(1).strip()
+            target_url = SITE_ALIASES.get(site_name)
+            if target_url:
+                return {
+                    "mode": "execute",
+                    "message": f"Opening {site_name} in a new tab.",
+                    "steps": [
+                        {"tool": "open_tab", "args": {}},
+                        {"tool": "browse", "args": {"url": target_url}},
+                    ],
+                }
+            # If not a known alias, try as a URL or fall through to LLM
+
+        if re.fullmatch(r"(open|new)\s+(a\s+)?new\s+tab|open\s+tab", normalized):
             return {
                 "mode": "execute",
                 "message": "Opening a new tab.",
@@ -1105,7 +1211,7 @@ class VoiceBrowserSession:
             }
 
         for alias, url in SITE_ALIASES.items():
-            if re.search(rf"\b(open|go to|navigate to)\s+{re.escape(alias)}\b", normalized):
+            if re.search(rf"\b(open|go to|navigate to|come back to|go back to|return to|switch to)\s+{re.escape(alias)}\b", normalized):
                 return {
                     "mode": "execute",
                     "message": f"Opening {alias}.",
@@ -1167,14 +1273,49 @@ class VoiceBrowserSession:
             }
 
         click_match = re.search(r"click (.+)", normalized)
-        first_result_match = re.search(r"(click|open)\s+(the\s+)?(first|1st)\s+result", normalized)
-        if first_result_match:
-            first_result_candidates = self._click_selector_candidates(snapshot, "first_result")
-            if first_result_candidates:
+
+        # Match "open/click [the] Nth article/story/comment/post/result/link/item"
+        nth_match = re.search(
+            r"(click|open)\s+(the\s+)?(\w+)\s+(result|article|story|post|link|item|comment)",
+            normalized,
+        )
+        if nth_match:
+            ordinal_word = nth_match.group(3)
+            target_type = nth_match.group(4)
+            n = self._ORDINAL_MAP.get(ordinal_word)
+
+            # Also try bare digits: "open 3 article" or "click 5 story"
+            if n is None and ordinal_word.isdigit():
+                n = int(ordinal_word)
+
+            if n is not None and 1 <= n <= 30:
+                # Try instant JS click using cached selectors
+                js_result = self._click_nth_with_js(snapshot, n, target_type)
+                if js_result:
+                    title = js_result.get("text", f"item #{n}")
+                    return {
+                        "mode": "execute",
+                        "message": f"Opened {ordinal_word} {target_type}: {title}",
+                        "steps": [],  # Already executed via JS
+                        "_already_executed": True,
+                        "_js_result": js_result,
+                    }
+
+                # Fallback: use MCP click with selector candidates
+                if n == 1:
+                    first_result_candidates = self._click_selector_candidates(snapshot, "first_result")
+                    if first_result_candidates:
+                        return {
+                            "mode": "execute",
+                            "message": f"Opening the first {target_type}.",
+                            "steps": [{"tool": "click", "args": self._click_args(snapshot, f"the first {target_type}", intent="first_result")}],
+                        }
+
+                # Generic MCP click fallback
                 return {
                     "mode": "execute",
-                    "message": "Opening the first result.",
-                    "steps": [{"tool": "click", "args": self._click_args(snapshot, "the first result", intent="first_result")}],
+                    "message": f"Clicking the {ordinal_word} {target_type}.",
+                    "steps": [{"tool": "click", "args": {"prompt": f"the {ordinal_word} {target_type}"}}],
                 }
 
         if click_match:
@@ -1193,6 +1334,16 @@ class VoiceBrowserSession:
                     "mode": "execute",
                     "message": f"Opening Google and searching for {text}.",
                     "steps": [{"tool": "browse", "args": {"url": f"https://www.google.com/search?q={quote(text)}"}}],
+                }
+            # On a search page, auto-submit after typing
+            if self._supports_inline_search(snapshot):
+                return {
+                    "mode": "execute",
+                    "message": f"Typing {text} and searching.",
+                    "steps": [
+                        {"tool": "type", "args": self._typing_args(snapshot, text, prefer_search=True)},
+                        {"tool": "press_key", "args": {"key": "Enter"}},
+                    ],
                 }
             return {
                 "mode": "execute",
@@ -1355,11 +1506,17 @@ Rules:
                     continue
                 steps.append({"tool": tool, "args": args})
 
-        if mode == "execute" and not steps:
+        if mode == "execute" and not steps and not plan.get("_already_executed"):
             mode = "ask"
             message = "I need a little more guidance for that command. Tell me the next action more directly."
 
-        return {"mode": mode, "message": message, "steps": steps}
+        validated_plan = {"mode": mode, "message": message, "steps": steps}
+        if plan.get("_already_executed"):
+            validated_plan["_already_executed"] = True
+            if "_js_result" in plan:
+                validated_plan["_js_result"] = plan["_js_result"]
+
+        return validated_plan
 
     def _auto_wait_if_needed(self, tool: str):
         if tool not in AUTO_WAIT_TOOLS:
@@ -1398,8 +1555,10 @@ Rules:
             return {"status": "keep", "reason": "Session ended on user request."}
 
         steps = plan.get("steps") or []
-        if not steps:
+        if not steps and not plan.get("_already_executed"):
             return {"status": "discard", "reason": "Planner returned no executable steps."}
+        if plan.get("_already_executed"):
+            return {"status": "keep", "reason": "Executed via JS click on cached selector."}
 
         before_url = self._current_url(snapshot_before)
         after_url = self._current_url(snapshot_after)
@@ -1458,7 +1617,7 @@ Rules:
             trace["plan_source"] = "rule_fast_path"
         else:
             heuristic = self._fallback_plan(raw_resolved_command, snapshot_before)
-            if heuristic.get("mode") == "execute" and heuristic.get("steps"):
+            if heuristic.get("mode") == "execute" and (heuristic.get("steps") or heuristic.get("_already_executed")):
                 plan = self._validate_plan(heuristic)
                 resolved_command = raw_resolved_command
                 trace["plan_source"] = "selector_fast_path"
@@ -1469,9 +1628,28 @@ Rules:
                     include_tabs=self._command_mentions_tabs(command),
                 )
                 reframed = self._reframe_command(command, snapshot_before)
+                confidence = float(reframed.get("confidence", 1.0))
                 resolved_command = normalize_spoken_command(reframed.get("clear_task") or command)
                 trace["reframed_command"] = resolved_command
                 trace["reframer_used"] = bool(reframed.get("was_reframed") or resolved_command != raw_resolved_command)
+
+                # If reframer has very low confidence, don't execute garbage
+                if confidence < 0.4 and reframed.get("was_reframed"):
+                    plan = {
+                        "mode": "ask",
+                        "message": "I didn't quite understand that. Could you say it again more clearly?",
+                        "steps": [],
+                    }
+                    trace["plan_source"] = "low_confidence_reject"
+                    trace["plan_mode"] = "ask"
+                    trace["steps_json"] = "[]"
+                    trace["assistant_reply"] = plan["message"]
+                    trace["latency_ms"] = int((time.time() - turn_started_at) * 1000)
+                    self._log_turn(trace)
+                    self._remember(command, plan["message"])
+                    flush_ui()
+                    self._print_reply("Assistant", [plan["message"]], C.YELLOW)
+                    return True
 
                 local = self._local_intent(resolved_command, snapshot_before)
                 if local:
@@ -1479,7 +1657,7 @@ Rules:
                     trace["plan_source"] = "reframed_rule_fast_path"
                 else:
                     heuristic = self._fallback_plan(resolved_command, snapshot_before)
-                    if heuristic.get("mode") == "execute" and heuristic.get("steps"):
+                    if heuristic.get("mode") == "execute" and (heuristic.get("steps") or heuristic.get("_already_executed")):
                         plan = self._validate_plan(heuristic)
                         trace["plan_source"] = "reframed_selector_fast_path"
                     else:
@@ -1516,6 +1694,31 @@ Rules:
             self._print_reply("Assistant", [reply], C.CYAN)
             return True
 
+        # Handle plans already executed via JS (e.g., Nth item clicks)
+        if plan.get("_already_executed"):
+            self._auto_wait_if_needed("click")
+            status_after = self._call_tool_json("get_status", {}) or {}
+            snapshot_after = {"status": status_after}
+            follow_up = self._format_follow_up(snapshot_after)
+            lines = [plan["message"], follow_up]
+
+            validation = self._validate_execution(plan, snapshot_before, snapshot_after, [], None)
+            trace["validation_status"] = validation["status"]
+            trace["validation_reason"] = validation["reason"]
+            trace["selector_path"] = "js_nth_click"
+            trace["selector_used"] = (plan.get("_js_result") or {}).get("selector", "")
+            trace["active_url_after"] = self._current_url(snapshot_after)
+            trace["active_title_after"] = self._snapshot_title(snapshot_after)
+            trace["assistant_reply"] = " ".join(lines)
+            trace["latency_ms"] = int((time.time() - turn_started_at) * 1000)
+
+            self.last_error = None
+            self._log_turn(trace)
+            self._remember(command, lines[0])
+            flush_ui()
+            self._print_reply("Assistant", lines, C.GREEN)
+            return True
+
         results = []
         try:
             prepared_steps = [self._prepare_step_for_execution(step, snapshot_before) for step in plan["steps"]]
@@ -1545,6 +1748,9 @@ Rules:
                         "selector_path": result_meta.get("selector_path", ""),
                     }
                 )
+                # Human-like pause before Enter after typing (avoids bot detection)
+                if tool == "type" and self._is_bot_protected_site(snapshot_before):
+                    time.sleep(0.4)
                 self._auto_wait_if_needed(tool)
 
             status_after = self._call_tool_json("get_status", {}) or {}
@@ -1771,16 +1977,65 @@ def record_until_silence(ui: VoiceUI) -> str:
     return audio_path
 
 
-def print_welcome():
+def _ensure_voice_deps():
+    """Import pyaudio and sarvamai at runtime — only needed for voice mode."""
+    global pyaudio, AsyncSarvamAI, FORMAT
+    if pyaudio is not None:
+        return
+    try:
+        import pyaudio as _pa
+        pyaudio = _pa
+    except ImportError:
+        print(f"  {C.RED}PyAudio is required for voice mode: pip install pyaudio{C.RESET}")
+        raise SystemExit(1)
+    try:
+        from sarvamai import AsyncSarvamAI as _sarvam
+        globals()["AsyncSarvamAI"] = _sarvam
+    except ImportError:
+        print(f"  {C.RED}Sarvam AI SDK is required for voice mode: pip install sarvamai{C.RESET}")
+        raise SystemExit(1)
+    FORMAT = pyaudio.paInt16
+
+
+def print_welcome(text_mode: bool = False):
     os.system("clear")
-    print(f"\n  {C.BOLD}WEBGhosting Persistent Voice Browser{C.RESET}")
-    print(f"  {C.DIM}Speak one command at a time. The browser stays open until you say 'discard browser'.{C.RESET}\n")
+    mode_label = "Text" if text_mode else "Voice"
+    print(f"\n  {C.BOLD}WEBGhosting Persistent {mode_label} Browser{C.RESET}")
+    if text_mode:
+        print(f"  {C.DIM}Type one command at a time. The browser stays open until you type 'discard browser'.{C.RESET}")
+        print(f"  {C.DIM}Demo Mode — no microphone needed.{C.RESET}\n")
+    else:
+        print(f"  {C.DIM}Speak one command at a time. The browser stays open until you say 'discard browser'.{C.RESET}\n")
+
+
+def _text_input_prompt() -> str:
+    """Read a command from the keyboard with a styled prompt."""
+    try:
+        return input(f"  {C.BCYAN}❯{C.RESET} ").strip()
+    except EOFError:
+        return "discard browser"
 
 
 def main():
-    print_welcome()
+    parser = argparse.ArgumentParser(
+        description="WEBGhosting Persistent Browser Agent",
+    )
+    parser.add_argument(
+        "--text",
+        action="store_true",
+        help="Demo mode: type commands instead of speaking (no mic/Sarvam needed)",
+    )
+    args = parser.parse_args()
+    text_mode = args.text
 
-    required = ["SARVAM_API_KEY", "AI_API_KEY"]
+    print_welcome(text_mode=text_mode)
+
+    if text_mode:
+        required = ["AI_API_KEY"]
+    else:
+        _ensure_voice_deps()
+        required = ["SARVAM_API_KEY", "AI_API_KEY"]
+
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
         print(f"  {C.RED}Missing environment variables: {', '.join(missing)}{C.RESET}")
@@ -1791,38 +2046,73 @@ def main():
 
     try:
         session = VoiceBrowserSession()
-        panel(
-            "Session Ready",
-            [
-                "Browser session is live and will stay open across voice commands.",
-                "Say things like 'open Google', 'type Hacker News and search it', or 'click the first result'.",
-                "Say 'discard browser' whenever you want to end the session.",
-                f"Policy: {os.path.basename(SARVAM_PROGRAM_PATH)}  |  Log: {os.path.basename(DEFAULT_RESULTS_TSV_PATH)}",
-            ],
-            color=C.CYAN,
-        )
 
-        while True:
-            audio_path = record_until_silence(ui)
-            try:
-                transcript = asyncio.run(transcribe_audio_file(audio_path))
-            finally:
-                ui.stop_animation(clear_frame=True)
-                if os.path.exists(audio_path):
-                    os.remove(audio_path)
+        if text_mode:
+            panel(
+                "Demo Session Ready",
+                [
+                    "Browser session is live. Type commands below.",
+                    "Examples: 'open google', 'type Hacker News and search', 'click the first result'",
+                    "Type 'discard browser' to end the session.",
+                    f"Log: {os.path.basename(DEFAULT_RESULTS_TSV_PATH)}",
+                ],
+                color=C.CYAN,
+            )
 
-            if not transcript or len(transcript.strip()) < 2:
-                panel("Assistant", ["I did not catch that clearly. Please try again."], color=C.YELLOW)
-                continue
-
-            panel("Voice Command", [f"\"{transcript}\""], color=C.CYAN)
-            ui.set_state("EXECUTING")
-            ui.start_animation()
-            try:
-                if not session.handle_command(transcript, ui=ui):
+            while True:
+                command = _text_input_prompt()
+                if not command:
+                    continue
+                panel("Command", [f'"{command}"'], color=C.CYAN)
+                if not session.handle_command(command):
                     break
-            finally:
-                ui.stop_animation()
+        else:
+            panel(
+                "Session Ready",
+                [
+                    "Browser session is live and will stay open across voice commands.",
+                    "Say things like 'open Google', 'type Hacker News and search it', or 'click the first result'.",
+                    "Say 'discard browser' whenever you want to end the session.",
+                    f"Policy: {os.path.basename(SARVAM_PROGRAM_PATH)}  |  Log: {os.path.basename(DEFAULT_RESULTS_TSV_PATH)}",
+                ],
+                color=C.CYAN,
+            )
+
+            while True:
+                audio_path = record_until_silence(ui)
+                transcript = ""
+                try:
+                    transcript = asyncio.run(transcribe_audio_file(audio_path))
+                except Exception as stt_err:
+                    ui.stop_animation(clear_frame=True)
+                    panel(
+                        "Transcription Error",
+                        [
+                            f"Sarvam STT failed: {truncate(str(stt_err), 200)}",
+                            "Check your SARVAM_API_KEY. Retrying on next utterance...",
+                        ],
+                        color=C.YELLOW,
+                    )
+                    if os.path.exists(audio_path):
+                        os.remove(audio_path)
+                    continue
+                finally:
+                    ui.stop_animation(clear_frame=True)
+                    if os.path.exists(audio_path):
+                        os.remove(audio_path)
+
+                if not transcript or len(transcript.strip()) < 2:
+                    panel("Assistant", ["I did not catch that clearly. Please try again."], color=C.YELLOW)
+                    continue
+
+                panel("Voice Command", [f'"{transcript}"'], color=C.CYAN)
+                ui.set_state("EXECUTING")
+                ui.start_animation()
+                try:
+                    if not session.handle_command(transcript, ui=ui):
+                        break
+                finally:
+                    ui.stop_animation()
 
     except KeyboardInterrupt:
         ui.stop_animation(clear_frame=True)

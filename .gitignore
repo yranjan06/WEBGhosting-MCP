@@ -49,3 +49,9 @@ docker-compose.override.yml
 tmp_webmcp
 __pycache__/
 /config
+
+# Runtime / session data
+sarvam_results.tsv
+sarvam_eval_cases.json
+*.tsv
+.gemini/
