@@ -53,5 +53,6 @@ __pycache__/
 # Runtime / session data
 sarvam_results.tsv
 sarvam_eval_cases.json
+sarvam_program.md
 *.tsv
 .gemini/
