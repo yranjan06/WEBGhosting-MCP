@@ -3,6 +3,11 @@
 </div>
 
 ---
+## Demo
+
+[![WEBGhosting Demo](https://img.youtube.com/vi/sBX8FHHPyKY/maxresdefault.jpg)](https://www.youtube.com/watch?v=sBX8FHHPyKY)
+
+> Click the thumbnail above to watch the full demo on YouTube.
 
 ## What is WEBGhosting
 
